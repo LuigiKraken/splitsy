@@ -106,6 +106,7 @@ let createButtonPress = null;
 let suppressNextCreateClick = false;
 let dragGhostEl = null;
 let transparentDragImageEl = null;
+let resizeFrameHandle = null;
 
 const PREVIEW_IDLE_MS = CONFIG.previewIdleMs;
 const PREVIEW_MOVE_THRESHOLD_PX = CONFIG.previewMoveThresholdPx;
@@ -632,6 +633,37 @@ function updateHoverFromPoint(x, y) {
   }
 }
 
+function syncDragVisualsForResize() {
+  const dragCtx = getDragCtx();
+  const lastDragPoint = getLastDragPoint();
+  if (!dragCtx || !lastDragPoint) {
+    syncOverlayForCurrentMode();
+    return;
+  }
+
+  dragController.stopPreviewIdleTimer();
+  clearDropPreviewLayer();
+  dragController.setHoverPreview(null);
+
+  if (previewMode === "hitbox") {
+    updateHoverFromPoint(lastDragPoint.x, lastDragPoint.y);
+  } else if (previewMode === "combined") {
+    updateHoverFromPoint(lastDragPoint.x, lastDragPoint.y);
+    scheduleIdlePreview();
+  } else {
+    showPreviewSearchStateAtPoint(lastDragPoint.x, lastDragPoint.y);
+    scheduleIdlePreview();
+  }
+}
+
+function onWindowResize() {
+  if (resizeFrameHandle) return;
+  resizeFrameHandle = window.requestAnimationFrame(() => {
+    resizeFrameHandle = null;
+    syncDragVisualsForResize();
+  });
+}
+
 function resolveDragCtxFromDropEvent(e) {
   const ctx = getDragCtx();
   if (ctx) return ctx;
@@ -1078,6 +1110,7 @@ window.addEventListener("drop", () => {
   if (!dragController.hasTransientState()) return;
   cleanupDragUI(null, true);
 });
+window.addEventListener("resize", onWindowResize);
 
 workspaceEl.addEventListener("dragover", onWorkspaceDragOver);
 workspaceEl.addEventListener("drop", onWorkspaceDrop);
