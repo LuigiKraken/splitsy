@@ -8,37 +8,31 @@ const CONFIG_OVERRIDE = (window.DOCK_CONFIG_OVERRIDE && typeof window.DOCK_CONFI
 const RAW_CONFIG = CONFIG_OVERRIDE ? { ...DEFAULT_CONFIG, ...CONFIG_OVERRIDE } : DEFAULT_CONFIG;
 const VIEW_MODES = ["hitbox", "preview", "combined"];
 
-function asPositiveNumber(value, fallback) {
-  return Number.isFinite(value) && value > 0 ? value : fallback;
-}
+const asPositiveNumber = (value, fallback) =>
+  Number.isFinite(value) && value > 0 ? value : fallback;
 
-function asPositiveInt(value, fallback) {
+const asPositiveInt = (value, fallback) => {
   const n = Number.parseInt(value, 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
-}
+};
 
-function asNumberInRange(value, fallback, min, max) {
-  if (!Number.isFinite(value)) return fallback;
-  return Math.max(min, Math.min(max, value));
-}
+const asNumberInRange = (value, fallback, min, max) =>
+  Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
 
-function asFraction(value, fallback, min = 0.01, max = 1) {
+const asFraction = (value, fallback, min = 0.01, max = 1) => {
   if (!Number.isFinite(value)) return fallback;
   const normalized = value > 1 && value <= 100 ? value / 100 : value;
   return Math.max(min, Math.min(max, normalized));
-}
+};
 
-function asBoolean(value, fallback) {
-  return typeof value === "boolean" ? value : fallback;
-}
+const asBoolean = (value, fallback) =>
+  typeof value === "boolean" ? value : fallback;
 
-function asStringEnum(value, fallback, allowedValues) {
-  return typeof value === "string" && allowedValues.includes(value) ? value : fallback;
-}
+const asStringEnum = (value, fallback, allowedValues) =>
+  typeof value === "string" && allowedValues.includes(value) ? value : fallback;
 
-function resolveSizeFraction(inputFraction, fallbackFraction) {
-  return asFraction(inputFraction, asFraction(fallbackFraction, fallbackFraction));
-}
+const resolveSizeFraction = (inputFraction, fallbackFraction) =>
+  asFraction(inputFraction, asFraction(fallbackFraction, fallbackFraction));
 
 function normalizeConfig(raw) {
   const input = (raw && typeof raw === "object") ? raw : {};
@@ -135,16 +129,16 @@ const getHoverPreview = () => dragController.getHoverPreview();
 const getLastDragPoint = () => dragController.getLastDragPoint();
 const setLastDragPoint = (value) => dragController.setLastDragPoint(value);
 
-function formatZoneSummary(zone, includeTarget = false) {
+const formatZoneSummary = (zone, includeTarget = false) => {
   if (!zone) return "";
-  const target = includeTarget && zone.targetId ? ` target=${zone.targetId}` : "";
   const direction = zone.direction ? ` dir=${zone.direction}` : "";
+  const target = includeTarget && zone.targetId ? ` target=${zone.targetId}` : "";
   return `${zone.type} | layer=${zone.layer}${direction}${target}`;
-}
+};
 
-function setMaxBoxCountReachedStatus() {
+const setMaxBoxCountReachedStatus = () => {
   statusEl.textContent = `Cannot create more boxes: max total box count is ${CONFIG.maxTotalBoxCount}.`;
-}
+};
 
 function applyRuntimeStyleConfig() {
   const rootStyle = document.documentElement.style;
@@ -248,27 +242,15 @@ function safePositiveInt(value, fallback) {
 
 function persistLayoutState() {
   if (!CONFIG.persistLayout) return;
-  const payload = {
-    schemaVersion: STORAGE_SCHEMA_VERSION,
-    root,
-    activePanelId,
-    previewMode,
-    idCounter,
-    panelCounter
-  };
   try {
-    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(payload));
-  } catch (err) {
-    // Ignore storage write failures (e.g., privacy mode or quota exceeded).
-  }
+    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify({
+      schemaVersion: STORAGE_SCHEMA_VERSION, root, activePanelId, previewMode, idCounter, panelCounter
+    }));
+  } catch (err) {}
 }
 
 function clearPersistedLayoutState() {
-  try {
-    localStorage.removeItem(LAYOUT_STORAGE_KEY);
-  } catch (err) {
-    // Ignore storage clear failures; reset still applies in memory.
-  }
+  try { localStorage.removeItem(LAYOUT_STORAGE_KEY); } catch (err) {}
 }
 
 function restorePersistedLayoutState() {
@@ -306,42 +288,34 @@ function restorePersistedLayoutState() {
 
 restorePersistedLayoutState();
 
-function axisStackLimit(axis) {
-  return axis === "column" ? CONFIG.maxHorizontalStack : CONFIG.maxVerticalStack;
-}
+const axisStackLimit = (axis) =>
+  axis === "column" ? CONFIG.maxHorizontalStack : CONFIG.maxVerticalStack;
 
-function canAddSiblingToAxis(axis, nextSiblingCount) {
-  return nextSiblingCount <= axisStackLimit(axis);
-}
+const canAddSiblingToAxis = (axis, nextSiblingCount) =>
+  nextSiblingCount <= axisStackLimit(axis);
 
-function canCreateAnotherBox() {
-  return getTotalBoxCount(root) < CONFIG.maxTotalBoxCount;
-}
+const canCreateAnotherBox = () =>
+  getTotalBoxCount(root) < CONFIG.maxTotalBoxCount;
 
-function onResizeHandlePointerDown(e, panelId, corner) {
-  if (!resizeController) return;
-  resizeController.onResizeHandlePointerDown(e, panelId, corner);
-}
+const onResizeHandlePointerDown = (e, panelId, corner) => {
+  if (resizeController) resizeController.onResizeHandlePointerDown(e, panelId, corner);
+};
 
-function onWorkspacePointerDownForResize(e) {
-  if (!resizeController) return;
-  resizeController.onWorkspacePointerDown(e);
-}
+const onWorkspacePointerDownForResize = (e) => {
+  if (resizeController) resizeController.onWorkspacePointerDown(e);
+};
 
-function onResizePointerMove(e) {
-  if (!resizeController) return;
-  resizeController.onResizePointerMove(e);
-}
+const onResizePointerMove = (e) => {
+  if (resizeController) resizeController.onResizePointerMove(e);
+};
 
-function onResizePointerUp(e) {
-  if (!resizeController) return;
-  resizeController.onResizePointerUp(e);
-}
+const onResizePointerUp = (e) => {
+  if (resizeController) resizeController.onResizePointerUp(e);
+};
 
-function onResizePointerCancel(e) {
-  if (!resizeController) return;
-  resizeController.onResizePointerCancel(e);
-}
+const onResizePointerCancel = (e) => {
+  if (resizeController) resizeController.onResizePointerCancel(e);
+};
 
 const dropZonesApi = window.DropZones;
 if (!dropZonesApi) {
@@ -437,31 +411,32 @@ function renderWithoutPersist() {
 
 function capturePanelRects() {
   const rectMap = new Map();
-  const panelEls = workspaceEl.querySelectorAll(".panel[data-panel-id]");
-  for (const panelEl of panelEls) {
+  for (const panelEl of workspaceEl.querySelectorAll(".panel[data-panel-id]")) {
     const panelId = panelEl.dataset.panelId;
     if (!panelId) continue;
-    const rect = panelEl.getBoundingClientRect();
-    rectMap.set(panelId, {
-      left: rect.left,
-      top: rect.top,
-      width: rect.width,
-      height: rect.height
-    });
+    const r = panelEl.getBoundingClientRect();
+    rectMap.set(panelId, { left: r.left, top: r.top, width: r.width, height: r.height });
   }
   return rectMap;
 }
 
-function clearDropTransitionStyles(panelEl) {
+function clearTransitionStyles(panelEl) {
   panelEl.style.transition = "";
   panelEl.style.transform = "";
   panelEl.style.transformOrigin = "";
+  panelEl.style.opacity = "";
   panelEl.style.willChange = "";
 }
 
-function animateDropTransition(previousRects, enteredPanelId = null) {
+// Shared FLIP animation core used by both drop and preview transitions.
+// containerEl  - element whose .panel children to animate
+// previousRects - Map of panelId -> rect captured before the DOM change
+// transitionMs  - duration
+// isPreview    - true = preview layer behaviour (fade-in new panels, animate opacity)
+// enteredPanelId - (drop only) id of newly created panel to flash-enter
+function animatePanelTransition(containerEl, previousRects, transitionMs, isPreview, enteredPanelId) {
   if (!previousRects || previousRects.size === 0) return;
-  const panelEls = Array.from(workspaceEl.querySelectorAll(".panel[data-panel-id]"));
+  const panelEls = Array.from(containerEl.querySelectorAll(".panel[data-panel-id]"));
   if (panelEls.length === 0) return;
 
   const movingPanels = [];
@@ -474,11 +449,15 @@ function animateDropTransition(previousRects, enteredPanelId = null) {
     const newRect = panelEl.getBoundingClientRect();
 
     if (!oldRect) {
-      if (enteredPanelId && panelId === enteredPanelId) {
+      if (isPreview) {
+        panelEl.style.opacity = "0.55";
+        panelEl.style.transform = "scale(0.92)";
+        panelEl.style.transition = "none";
+        panelEl.style.willChange = "transform, opacity";
+        movingPanels.push(panelEl);
+      } else if (enteredPanelId && panelId === enteredPanelId) {
         panelEl.classList.add("drop-panel-enter");
-        window.setTimeout(() => {
-          panelEl.classList.remove("drop-panel-enter");
-        }, DROP_TRANSITION_MS + 30);
+        window.setTimeout(() => panelEl.classList.remove("drop-panel-enter"), transitionMs + 30);
       }
       continue;
     }
@@ -489,15 +468,14 @@ function animateDropTransition(previousRects, enteredPanelId = null) {
     const dy = oldRect.top - newRect.top;
     const sx = oldRect.width / newRect.width;
     const sy = oldRect.height / newRect.height;
-    const moved = Math.abs(dx) > epsilonPx || Math.abs(dy) > epsilonPx;
-    const resized = Math.abs(1 - sx) > 0.01 || Math.abs(1 - sy) > 0.01;
-    if (!moved && !resized) continue;
+    if (Math.abs(dx) <= epsilonPx && Math.abs(dy) <= epsilonPx
+        && Math.abs(1 - sx) <= 0.01 && Math.abs(1 - sy) <= 0.01) continue;
 
-    clearDropTransitionStyles(panelEl);
+    clearTransitionStyles(panelEl);
     panelEl.style.transition = "none";
     panelEl.style.transformOrigin = "top left";
     panelEl.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-    panelEl.style.willChange = "transform";
+    panelEl.style.willChange = isPreview ? "transform, opacity" : "transform";
     movingPanels.push(panelEl);
   }
 
@@ -505,16 +483,21 @@ function animateDropTransition(previousRects, enteredPanelId = null) {
 
   window.requestAnimationFrame(() => {
     for (const panelEl of movingPanels) {
-      panelEl.style.transition = `transform ${DROP_TRANSITION_MS}ms cubic-bezier(0.2, 0.78, 0.18, 1)`;
+      panelEl.style.transition = isPreview
+        ? `transform ${transitionMs}ms cubic-bezier(0.2, 0.78, 0.18, 1), opacity ${transitionMs}ms linear`
+        : `transform ${transitionMs}ms cubic-bezier(0.2, 0.78, 0.18, 1)`;
       panelEl.style.transform = "translate(0px, 0px) scale(1, 1)";
+      if (isPreview) panelEl.style.opacity = "1";
     }
   });
 
   window.setTimeout(() => {
-    for (const panelEl of movingPanels) {
-      clearDropTransitionStyles(panelEl);
-    }
-  }, DROP_TRANSITION_MS + 40);
+    for (const panelEl of movingPanels) clearTransitionStyles(panelEl);
+  }, transitionMs + 40);
+}
+
+function animateDropTransition(previousRects, enteredPanelId = null) {
+  animatePanelTransition(workspaceEl, previousRects, DROP_TRANSITION_MS, false, enteredPanelId);
 }
 
 function renderAndPersistWithDropTransition(previousRects, enteredPanelId = null) {
@@ -524,57 +507,7 @@ function renderAndPersistWithDropTransition(previousRects, enteredPanelId = null
 
 function animatePreviewTransition(previewLayer, sourceRects) {
   if (!previewLayer || !sourceRects || sourceRects.size === 0) return;
-  const previewPanels = Array.from(previewLayer.querySelectorAll(".panel[data-panel-id]"));
-  if (previewPanels.length === 0) return;
-
-  const movingPanels = [];
-  const epsilonPx = 0.5;
-  for (const panelEl of previewPanels) {
-    const panelId = panelEl.dataset.panelId;
-    if (!panelId) continue;
-    const oldRect = sourceRects.get(panelId);
-    const newRect = panelEl.getBoundingClientRect();
-    if (!oldRect) {
-      panelEl.style.opacity = "0.55";
-      panelEl.style.transform = "scale(0.92)";
-      panelEl.style.transition = "none";
-      panelEl.style.willChange = "transform, opacity";
-      movingPanels.push(panelEl);
-      continue;
-    }
-    if (newRect.width <= 0 || newRect.height <= 0) continue;
-    const dx = oldRect.left - newRect.left;
-    const dy = oldRect.top - newRect.top;
-    const sx = oldRect.width / newRect.width;
-    const sy = oldRect.height / newRect.height;
-    const moved = Math.abs(dx) > epsilonPx || Math.abs(dy) > epsilonPx;
-    const resized = Math.abs(1 - sx) > 0.01 || Math.abs(1 - sy) > 0.01;
-    if (!moved && !resized) continue;
-    panelEl.style.transition = "none";
-    panelEl.style.transformOrigin = "top left";
-    panelEl.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
-    panelEl.style.willChange = "transform";
-    movingPanels.push(panelEl);
-  }
-
-  if (movingPanels.length === 0) return;
-  window.requestAnimationFrame(() => {
-    for (const panelEl of movingPanels) {
-      panelEl.style.transition = `transform ${PREVIEW_TRANSITION_MS}ms cubic-bezier(0.2, 0.78, 0.18, 1), opacity ${PREVIEW_TRANSITION_MS}ms linear`;
-      panelEl.style.transform = "translate(0px, 0px) scale(1, 1)";
-      panelEl.style.opacity = "1";
-    }
-  });
-
-  window.setTimeout(() => {
-    for (const panelEl of movingPanels) {
-      panelEl.style.transition = "";
-      panelEl.style.transform = "";
-      panelEl.style.transformOrigin = "";
-      panelEl.style.opacity = "";
-      panelEl.style.willChange = "";
-    }
-  }, PREVIEW_TRANSITION_MS + 30);
+  animatePanelTransition(previewLayer, sourceRects, PREVIEW_TRANSITION_MS, true, null);
 }
 
 const resizeControllerApi = window.ResizeController;
@@ -607,11 +540,9 @@ function syncOverlayForCurrentMode() {
   }
 }
 
-function removeDragGhost() {
-  if (!dragGhostEl) return;
-  dragGhostEl.remove();
-  dragGhostEl = null;
-}
+const removeDragGhost = () => {
+  if (dragGhostEl) { dragGhostEl.remove(); dragGhostEl = null; }
+};
 
 function ensureDragGhost(label) {
   removeDragGhost();
@@ -622,19 +553,17 @@ function ensureDragGhost(label) {
   dragGhostEl = ghost;
 }
 
-function moveDragGhost(point) {
-  if (!dragGhostEl) return;
-  const x = point.x + 14;
-  const y = point.y + 14;
-  dragGhostEl.style.transform = `translate(${x}px, ${y}px)`;
-}
+const moveDragGhost = (point) => {
+  if (dragGhostEl) dragGhostEl.style.transform = `translate(${point.x + 14}px, ${point.y + 14}px)`;
+};
 
 function getTransparentDragImage() {
-  if (transparentDragImageEl) return transparentDragImageEl;
-  const canvas = document.createElement("canvas");
-  canvas.width = 1;
-  canvas.height = 1;
-  transparentDragImageEl = canvas;
+  if (!transparentDragImageEl) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1;
+    canvas.height = 1;
+    transparentDragImageEl = canvas;
+  }
   return transparentDragImageEl;
 }
 
@@ -729,21 +658,32 @@ function showHitboxStateAtPoint(x, y) {
   clearDropPreviewLayer();
   dragController.setHoverPreview(null);
   clearDragOverlay();
-  const panelInfoMap = buildPanelInfoMap(root);
-  const hover = resolveHoverAtPoint(panelInfoMap, x, y);
+  const hover = resolveHoverAtPoint(buildPanelInfoMap(root), x, y);
   if (!hover) {
     statusEl.textContent = "Move over a panel and hold still to see drop preview.";
-    return;
-  }
-  if (!hover.zone) {
+  } else if (!hover.zone) {
     statusEl.textContent = "No valid drop zone here. Move and hold in another spot.";
-    return;
-  }
-  if (hover.zone.type === "INVALID") {
+  } else if (hover.zone.type === "INVALID") {
     statusEl.textContent = `Blocked by limits: ${hover.zone.reason}`;
-    return;
+  } else {
+    statusEl.textContent = "Hold still briefly to show drop preview. Move to keep searching.";
   }
-  statusEl.textContent = "Hold still briefly to show drop preview. Move to keep searching.";
+}
+
+function showPreviewSearchStateAtPoint(x, y) {
+  clearDropPreviewLayer();
+  dragController.setHoverPreview(null);
+  clearDragOverlay();
+  const hover = resolveHoverAtPoint(buildPanelInfoMap(root), x, y);
+  if (!hover) {
+    statusEl.textContent = "Move over a panel and pause briefly to see the drop preview.";
+  } else if (!hover.zone) {
+    statusEl.textContent = "No valid drop zone here. Move and pause in another spot.";
+  } else if (hover.zone.type === "INVALID") {
+    statusEl.textContent = `Preview blocked: ${hover.zone.reason}`;
+  } else {
+    statusEl.textContent = "Pause briefly to show drop preview.";
+  }
 }
 
 function handlePreviewModeDragOver(x, y) {
@@ -751,27 +691,6 @@ function handlePreviewModeDragOver(x, y) {
     showPreviewSearchStateAtPoint(x, y);
     scheduleIdlePreview();
   });
-}
-
-function showPreviewSearchStateAtPoint(x, y) {
-  clearDropPreviewLayer();
-  dragController.setHoverPreview(null);
-  clearDragOverlay();
-  const panelInfoMap = buildPanelInfoMap(root);
-  const hover = resolveHoverAtPoint(panelInfoMap, x, y);
-  if (!hover) {
-    statusEl.textContent = "Move over a panel and pause briefly to see the drop preview.";
-    return;
-  }
-  if (!hover.zone) {
-    statusEl.textContent = "No valid drop zone here. Move and pause in another spot.";
-    return;
-  }
-  if (hover.zone.type === "INVALID") {
-    statusEl.textContent = `Preview blocked: ${hover.zone.reason}`;
-    return;
-  }
-  statusEl.textContent = "Pause briefly to show drop preview.";
 }
 
 function handleCombinedModeDragOver(x, y) {
@@ -784,25 +703,41 @@ function handleCombinedModeDragOver(x, y) {
   });
 }
 
-function updateViewModeButton() {
+// Shared drag-over mode dispatch used by panel, workspace, and create-button handlers.
+function dispatchDragOver(x, y) {
   if (previewMode === "hitbox") {
-    viewModeBtn.textContent = "Mode: Hitbox";
-    viewModeBtn.setAttribute("aria-label", "Switch to preview mode");
-    return;
+    updateHoverFromPoint(x, y);
+  } else if (previewMode === "combined") {
+    handleCombinedModeDragOver(x, y);
+  } else {
+    handlePreviewModeDragOver(x, y);
   }
-  if (previewMode === "preview") {
-    viewModeBtn.textContent = "Mode: Preview";
-    viewModeBtn.setAttribute("aria-label", "Switch to combined mode");
-    return;
-  }
-  viewModeBtn.textContent = "Mode: Combined";
-  viewModeBtn.setAttribute("aria-label", "Switch to hitbox mode");
 }
 
-function syncResizeAffordanceMode() {
-  const mode = previewMode === "hitbox" ? "circles" : "cursor-only";
-  workspaceEl.dataset.resizeAffordance = mode;
+// Shared drop execution used by onPanelDrop and onWorkspaceDrop.
+function commitDrop(zone, dragCtx) {
+  const previousRects = capturePanelRects();
+  executeDrop(zone, dragCtx.tab, dragCtx.sourcePanelId);
+  const enteredPanelId = previousRects.has(activePanelId) ? null : activePanelId;
+  statusEl.textContent = `Dropped Box ${dragCtx.tab.num}: ${zone.type} (layer ${zone.layer}${zone.direction ? ` ${zone.direction}` : ""}).`;
+  cleanupDragUI();
+  renderAndPersistWithDropTransition(previousRects, enteredPanelId);
 }
+
+function updateViewModeButton() {
+  const labels = {
+    hitbox:   ["Mode: Hitbox",    "Switch to preview mode"],
+    preview:  ["Mode: Preview",   "Switch to combined mode"],
+    combined: ["Mode: Combined",  "Switch to hitbox mode"]
+  };
+  const [text, ariaLabel] = labels[previewMode] || labels.hitbox;
+  viewModeBtn.textContent = text;
+  viewModeBtn.setAttribute("aria-label", ariaLabel);
+}
+
+const syncResizeAffordanceMode = () => {
+  workspaceEl.dataset.resizeAffordance = previewMode === "hitbox" ? "circles" : "cursor-only";
+};
 
 function cleanupDragUI(message = null, shouldRender = false) {
   dragController.resetDragSession();
@@ -996,13 +931,7 @@ function onPanelDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
   setLastDragPoint({ x: e.clientX, y: e.clientY });
-  if (previewMode === "hitbox") {
-    updateHoverFromPoint(e.clientX, e.clientY);
-  } else if (previewMode === "combined") {
-    handleCombinedModeDragOver(e.clientX, e.clientY);
-  } else {
-    handlePreviewModeDragOver(e.clientX, e.clientY);
-  }
+  dispatchDragOver(e.clientX, e.clientY);
 }
 
 function onPanelClick(e, panelId) {
@@ -1033,28 +962,15 @@ function onPanelDrop(e) {
   e.preventDefault();
 
   const hoverPreview = getHoverPreview();
-  const panelInfoMap = buildPanelInfoMap(root);
-  const hover = resolveHoverAtPoint(panelInfoMap, e.clientX, e.clientY);
+  const hover = resolveHoverAtPoint(buildPanelInfoMap(root), e.clientX, e.clientY);
   const zone = (hoverPreview && hoverPreview.zone) || (hover && hover.zone) || null;
-  if (!zone) {
-    statusEl.textContent = "Drop canceled: no valid zone here.";
-    return;
-  }
-  if (zone.type === "INVALID") {
-    statusEl.textContent = `Drop blocked: ${zone.reason}`;
-    return;
-  }
+  if (!zone) { statusEl.textContent = "Drop canceled: no valid zone here."; return; }
+  if (zone.type === "INVALID") { statusEl.textContent = `Drop blocked: ${zone.reason}`; return; }
   if (!dragCtx.sourcePanelId && !canCreateAnotherBox()) {
     statusEl.textContent = `Drop blocked: max total box count (${CONFIG.maxTotalBoxCount}) reached.`;
     return;
   }
-
-  const previousRects = capturePanelRects();
-  executeDrop(zone, dragCtx.tab, dragCtx.sourcePanelId);
-  const enteredPanelId = previousRects.has(activePanelId) ? null : activePanelId;
-  statusEl.textContent = `Dropped Box ${dragCtx.tab.num}: ${zone.type} (layer ${zone.layer}${zone.direction ? ` ${zone.direction}` : ""}).`;
-  cleanupDragUI();
-  renderAndPersistWithDropTransition(previousRects, enteredPanelId);
+  commitDrop(zone, dragCtx);
 }
 
 function onWorkspaceDragOver(e) {
@@ -1064,13 +980,7 @@ function onWorkspaceDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
   setLastDragPoint({ x: e.clientX, y: e.clientY });
-  if (previewMode === "hitbox") {
-    updateHoverFromPoint(e.clientX, e.clientY);
-  } else if (previewMode === "combined") {
-    handleCombinedModeDragOver(e.clientX, e.clientY);
-  } else {
-    handlePreviewModeDragOver(e.clientX, e.clientY);
-  }
+  dispatchDragOver(e.clientX, e.clientY);
 }
 
 function onWorkspaceDrop(e) {
@@ -1080,24 +990,11 @@ function onWorkspaceDrop(e) {
   e.preventDefault();
 
   const hoverPreview = getHoverPreview();
-  const panelInfoMap = buildPanelInfoMap(root);
-  const hover = resolveHoverAtPoint(panelInfoMap, e.clientX, e.clientY);
+  const hover = resolveHoverAtPoint(buildPanelInfoMap(root), e.clientX, e.clientY);
   const zone = (hoverPreview && hoverPreview.zone) || (hover && hover.zone) || null;
-  if (!zone) {
-    statusEl.textContent = "Drop canceled: no valid zone here.";
-    return;
-  }
-  if (zone.type === "INVALID") {
-    statusEl.textContent = `Drop blocked: ${zone.reason}`;
-    return;
-  }
-
-  const previousRects = capturePanelRects();
-  executeDrop(zone, dragCtx.tab, dragCtx.sourcePanelId);
-  const enteredPanelId = previousRects.has(activePanelId) ? null : activePanelId;
-  statusEl.textContent = `Dropped Box ${dragCtx.tab.num}: ${zone.type} (layer ${zone.layer}${zone.direction ? ` ${zone.direction}` : ""}).`;
-  cleanupDragUI();
-  renderAndPersistWithDropTransition(previousRects, enteredPanelId);
+  if (!zone) { statusEl.textContent = "Drop canceled: no valid zone here."; return; }
+  if (zone.type === "INVALID") { statusEl.textContent = `Drop blocked: ${zone.reason}`; return; }
+  commitDrop(zone, dragCtx);
 }
 
 function createBoxInActiveSegment() {
@@ -1167,13 +1064,7 @@ function updateCreateButtonPointer(point) {
   }
   moveDragGhost(point);
   setLastDragPoint(point);
-  if (previewMode === "hitbox") {
-    updateHoverFromPoint(point.x, point.y);
-  } else if (previewMode === "combined") {
-    handleCombinedModeDragOver(point.x, point.y);
-  } else {
-    handlePreviewModeDragOver(point.x, point.y);
-  }
+  dispatchDragOver(point.x, point.y);
 }
 
 function finishCreateButtonPointer(point) {
@@ -1286,6 +1177,13 @@ viewModeBtn.addEventListener("click", () => {
   previewMode = VIEW_MODES[(safeIndex + 1) % VIEW_MODES.length];
   updateViewModeButton();
   syncResizeAffordanceMode();
+
+  const modeMessages = {
+    hitbox:   { dragging: "Hitbox mode enabled. Showing raw hit zones while dragging.",                                                             idle: "Hitbox mode enabled. Drag tabs to inspect drop zones." },
+    preview:  { dragging: "Preview mode enabled. Hitboxes stay hidden while moving; pause briefly to see the drop preview.",                        idle: "Preview mode enabled. While dragging: move without hitboxes, then pause briefly for a live drop preview." },
+    combined: { dragging: "Combined mode enabled. Hitboxes show while moving; pause to see a softer preview replacement.",                          idle: "Combined mode enabled. While dragging: hitboxes stay visible while moving, then a softer preview replaces them on pause." }
+  };
+
   const dragCtx = getDragCtx();
   const lastDragPoint = getLastDragPoint();
   if (dragCtx && lastDragPoint) {
@@ -1297,23 +1195,10 @@ viewModeBtn.addEventListener("click", () => {
     } else {
       updateHoverFromPoint(lastDragPoint.x, lastDragPoint.y);
     }
-    if (previewMode === "preview") {
-      scheduleIdlePreview();
-      statusEl.textContent = "Preview mode enabled. Hitboxes stay hidden while moving; pause briefly to see the drop preview.";
-    } else if (previewMode === "combined") {
-      scheduleIdlePreview();
-      statusEl.textContent = "Combined mode enabled. Hitboxes show while moving; pause to see a softer preview replacement.";
-    } else {
-      statusEl.textContent = "Hitbox mode enabled. Showing raw hit zones while dragging.";
-    }
+    if (previewMode === "preview" || previewMode === "combined") scheduleIdlePreview();
+    statusEl.textContent = (modeMessages[previewMode] || modeMessages.hitbox).dragging;
   } else {
-    if (previewMode === "preview") {
-      statusEl.textContent = "Preview mode enabled. While dragging: move without hitboxes, then pause briefly for a live drop preview.";
-    } else if (previewMode === "combined") {
-      statusEl.textContent = "Combined mode enabled. While dragging: hitboxes stay visible while moving, then a softer preview replaces them on pause.";
-    } else {
-      statusEl.textContent = "Hitbox mode enabled. Drag tabs to inspect drop zones.";
-    }
+    statusEl.textContent = (modeMessages[previewMode] || modeMessages.hitbox).idle;
   }
   syncOverlayForCurrentMode();
   persistLayoutState();

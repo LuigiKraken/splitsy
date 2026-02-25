@@ -1,13 +1,8 @@
 (function attachDropZones(global) {
   "use strict";
 
-  function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
-  }
-
-  function pointInRect(x, y, r) {
-    return x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height;
-  }
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+  const pointInRect = (x, y, r) => x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height;
 
   function pointInPolygon(x, y, poly) {
     if (!poly || poly.length < 3) return false;
@@ -27,19 +22,14 @@
   function getCenterRect(bounds, config) {
     const w = bounds.width * config.centerFraction;
     const h = bounds.height * config.centerFraction;
-    return {
-      left: bounds.left + (bounds.width - w) / 2,
-      top: bounds.top + (bounds.height - h) / 2,
-      width: w,
-      height: h
-    };
+    return { left: bounds.left + (bounds.width - w) / 2, top: bounds.top + (bounds.height - h) / 2, width: w, height: h };
   }
 
-  function getEffectiveLayerCount(bounds, depth, config) {
+  const getEffectiveLayerCount = (bounds, depth, config) => {
     const directionalLayerCount = Math.min(depth, config.maxDepth) + 1;
     const maxByPx = Math.floor(Math.min(bounds.width, bounds.height) / (2 * config.minBandPx));
     return Math.max(1, Math.min(directionalLayerCount, maxByPx || 1));
-  }
+  };
 
   function clipPolygon(poly, isInside, intersect) {
     if (!poly.length) return [];
@@ -163,24 +153,17 @@
     return poly;
   }
 
-  function getDisplayDirectionalBandPolygon(bounds, layer, totalLayers, direction, startRatio) {
+  const getDisplayDirectionalBandPolygon = (bounds, layer, totalLayers, direction, startRatio) => {
     if (layer < 1 || totalLayers < 1) return [];
     const safeStart = clamp(startRatio, 0, 0.95);
     const ring = (1 - safeStart) / totalLayers;
-    const inner = safeStart + (layer - 1) * ring;
-    const outer = safeStart + layer * ring;
-    return getDirectionalBandPolygonByRatio(bounds, direction, inner, outer);
-  }
+    return getDirectionalBandPolygonByRatio(bounds, direction, safeStart + (layer - 1) * ring, safeStart + layer * ring);
+  };
 
-  function polygonToClipPath(bounds, poly) {
+  const polygonToClipPath = (bounds, poly) => {
     if (!poly || poly.length < 3 || bounds.width <= 0 || bounds.height <= 0) return "";
-    const pts = poly.map((p) => {
-      const x = clamp(((p.x - bounds.left) / bounds.width) * 100, 0, 100);
-      const y = clamp(((p.y - bounds.top) / bounds.height) * 100, 0, 100);
-      return `${x}% ${y}%`;
-    });
-    return `polygon(${pts.join(", ")})`;
-  }
+    return `polygon(${poly.map((p) => `${clamp(((p.x - bounds.left) / bounds.width) * 100, 0, 100)}% ${clamp(((p.y - bounds.top) / bounds.height) * 100, 0, 100)}%`).join(", ")})`;
+  };
 
   function create(deps) {
     const {
@@ -222,16 +205,10 @@
       "rgba(244, 114, 182, 0.30)"
     ];
 
-    function zoneOutcomeKey(zone) {
+    const zoneOutcomeKey = (zone) => {
       if (!zone || zone.type === "INVALID") return "INVALID";
-      return [
-        zone.type || "",
-        zone.direction || "",
-        zone.panelId || "",
-        zone.targetId || "",
-        Number.isFinite(zone.insertIndex) ? zone.insertIndex : ""
-      ].join("|");
-    }
+      return [zone.type, zone.direction, zone.panelId, zone.targetId, Number.isFinite(zone.insertIndex) ? zone.insertIndex : ""].join("|");
+    };
 
     function isDirectionalLayerReachable(info, ancestorIndex, direction) {
       if (!info || !Array.isArray(info.ancestors) || ancestorIndex <= 0) return true;
@@ -264,182 +241,77 @@
       return count;
     }
 
-    function getWorkspaceBounds() {
-      return workspaceEl.getBoundingClientRect();
-    }
-
-    function getMinPanelWidthPx() {
-      const bounds = getWorkspaceBounds();
-      return Math.max(1, bounds.width * config.minBoxWidthFraction);
-    }
-
-    function getMinPanelHeightPx() {
-      const bounds = getWorkspaceBounds();
-      return Math.max(1, bounds.height * config.minBoxHeightFraction);
-    }
-
-    function getTabStripStackZoneMinHeightPx() {
-      const bounds = getWorkspaceBounds();
-      return Math.max(1, bounds.height * config.tabStripStackZoneMinHeightFraction);
-    }
-
-    function canHostPanelWithinBounds(bounds) {
-      return bounds.width >= getMinPanelWidthPx() && bounds.height >= getMinPanelHeightPx();
-    }
+    const getWorkspaceBounds = () => workspaceEl.getBoundingClientRect();
+    const getMinPanelWidthPx = () => Math.max(1, getWorkspaceBounds().width * config.minBoxWidthFraction);
+    const getMinPanelHeightPx = () => Math.max(1, getWorkspaceBounds().height * config.minBoxHeightFraction);
+    const getTabStripStackZoneMinHeightPx = () => Math.max(1, getWorkspaceBounds().height * config.tabStripStackZoneMinHeightFraction);
+    const canHostPanelWithinBounds = (bounds) => bounds.width >= getMinPanelWidthPx() && bounds.height >= getMinPanelHeightPx();
 
     function canSplitBoundsIntoSiblings(bounds, axis, siblingCount) {
-      if (!bounds || siblingCount < 1) return false;
-      if (!canHostPanelWithinBounds(bounds)) return false;
-      if (axis === "column") {
-        return (bounds.width / siblingCount) >= getMinPanelWidthPx();
-      }
-      return (bounds.height / siblingCount) >= getMinPanelHeightPx();
+      if (!bounds || siblingCount < 1 || !canHostPanelWithinBounds(bounds)) return false;
+      return axis === "column"
+        ? (bounds.width / siblingCount) >= getMinPanelWidthPx()
+        : (bounds.height / siblingCount) >= getMinPanelHeightPx();
     }
 
     function resolveDirectionalZone(info, panelBounds, layer, direction) {
+      const invalid = (targetId, reason) => ({ layer, direction, type: "INVALID", targetId, reason });
+      const stackMsg = (axis) => `Max ${axis === "column" ? "horizontal" : "vertical"} stack reached.`;
+
       if (layer === 1) {
         if (!canHostPanelWithinBounds(panelBounds)) {
-          return {
-            layer,
-            direction,
-            type: "INVALID",
-            targetId: info.panel.id,
-            reason: "Panel is smaller than configured minimum size."
-          };
+          return invalid(info.panel.id, "Panel is smaller than configured minimum size.");
         }
         const splitAxis = axisForDirection(direction);
         if (!canAddSiblingToAxis(splitAxis, 2)) {
-          return {
-            layer,
-            direction,
-            type: "INVALID",
-            targetId: info.panel.id,
-            reason: `Max ${splitAxis === "column" ? "horizontal" : "vertical"} stack reached.`
-          };
+          return invalid(info.panel.id, stackMsg(splitAxis));
         }
         if (!canSplitBoundsIntoSiblings(panelBounds, splitAxis, 2)) {
-          return {
-            layer,
-            direction,
-            type: "INVALID",
-            targetId: info.panel.id,
-            reason: "Split would create panels smaller than configured minimum size."
-          };
+          return invalid(info.panel.id, "Split would create panels smaller than configured minimum size.");
         }
-        return {
-          layer,
-          direction,
-          type: "SPLIT",
-          panelId: info.panel.id,
-          targetId: info.panel.id,
-          reason: "Layer 1 directional split"
-        };
+        return { layer, direction, type: "SPLIT", panelId: info.panel.id, targetId: info.panel.id, reason: "Layer 1 directional split" };
       }
 
       const ancestorIndex = layer - 1;
       const ancestor = info.ancestors[ancestorIndex];
       const childSubtree = info.ancestors[ancestorIndex - 1];
       if (!ancestor || ancestor.type !== "container" || !childSubtree) {
-        return {
-          layer,
-          direction,
-          type: "INVALID",
-          targetId: info.panel.id,
-          reason: "No ancestor container available for this layer."
-        };
+        return invalid(info.panel.id, "No ancestor container available for this layer.");
       }
 
       const ancestorEl = getNodeElementById(ancestor.id);
       if (!ancestorEl) {
-        return {
-          layer,
-          direction,
-          type: "INVALID",
-          targetId: ancestor.id,
-          reason: "Ancestor element not found."
-        };
+        return invalid(ancestor.id, "Ancestor element not found.");
       }
       const ancestorBounds = ancestorEl.getBoundingClientRect();
       if (!canHostPanelWithinBounds(ancestorBounds)) {
-        return {
-          layer,
-          direction,
-          type: "INVALID",
-          targetId: ancestor.id,
-          reason: "Ancestor area is smaller than configured minimum size."
-        };
+        return invalid(ancestor.id, "Ancestor area is smaller than configured minimum size.");
       }
 
       if (isAlongAxis(ancestor.axis, direction)) {
         const nextSiblingCount = ancestor.children.length + 1;
         if (!canAddSiblingToAxis(ancestor.axis, nextSiblingCount)) {
-          return {
-            layer,
-            direction,
-            type: "INVALID",
-            targetId: ancestor.id,
-            reason: `Max ${ancestor.axis === "column" ? "horizontal" : "vertical"} stack reached.`
-          };
+          return invalid(ancestor.id, stackMsg(ancestor.axis));
         }
         if (!canSplitBoundsIntoSiblings(ancestorBounds, ancestor.axis, nextSiblingCount)) {
-          return {
-            layer,
-            direction,
-            type: "INVALID",
-            targetId: ancestor.id,
-            reason: "Equalize would create panels smaller than configured minimum size."
-          };
+          return invalid(ancestor.id, "Equalize would create panels smaller than configured minimum size.");
         }
         const childIdx = ancestor.children.findIndex((c) => c.id === childSubtree.id);
         if (childIdx === -1) {
-          return {
-            layer,
-            direction,
-            type: "INVALID",
-            targetId: ancestor.id,
-            reason: "Child subtree was not found in ancestor."
-          };
+          return invalid(ancestor.id, "Child subtree was not found in ancestor.");
         }
-        const insertBefore = isBeforeDirection(direction);
-        const insertIndex = insertBefore ? childIdx : childIdx + 1;
-        return {
-          layer,
-          direction,
-          type: "EQUALIZE",
-          targetId: ancestor.id,
-          childSubtreeId: childSubtree.id,
-          insertIndex,
-          reason: `Layer ${layer} along ancestor axis (${ancestor.axis})`
-        };
+        const insertIndex = isBeforeDirection(direction) ? childIdx : childIdx + 1;
+        return { layer, direction, type: "EQUALIZE", targetId: ancestor.id, childSubtreeId: childSubtree.id, insertIndex, reason: `Layer ${layer} along ancestor axis (${ancestor.axis})` };
       }
 
       const wrapAxis = axisForDirection(direction);
       if (!canAddSiblingToAxis(wrapAxis, 2)) {
-        return {
-          layer,
-          direction,
-          type: "INVALID",
-          targetId: ancestor.id,
-          reason: `Max ${wrapAxis === "column" ? "horizontal" : "vertical"} stack reached.`
-        };
+        return invalid(ancestor.id, stackMsg(wrapAxis));
       }
       if (!canSplitBoundsIntoSiblings(ancestorBounds, wrapAxis, 2)) {
-        return {
-          layer,
-          direction,
-          type: "INVALID",
-          targetId: ancestor.id,
-          reason: "Wrap would create panels smaller than configured minimum size."
-        };
+        return invalid(ancestor.id, "Wrap would create panels smaller than configured minimum size.");
       }
-
-      return {
-        layer,
-        direction,
-        type: "WRAP",
-        targetId: ancestor.id,
-        reason: `Layer ${layer} perpendicular to ancestor axis (${ancestor.axis})`
-      };
+      return { layer, direction, type: "WRAP", targetId: ancestor.id, reason: `Layer ${layer} perpendicular to ancestor axis (${ancestor.axis})` };
     }
 
     function buildDisplayZoneDescriptors(panelEl, info) {
@@ -543,24 +415,16 @@
 
     function findZoneAtPoint(descriptors, x, y) {
       if (!descriptors || descriptors.length === 0) return null;
-      const matches = descriptors.filter((d) => d.hit(x, y));
-      if (matches.length === 0) return null;
-      matches.sort((a, b) => a.layer - b.layer);
-      return matches[0];
+      const matches = descriptors.filter((d) => d.hit(x, y)).sort((a, b) => a.layer - b.layer);
+      return matches[0] || null;
     }
 
     function chooseBetterZoneCandidate(current, next) {
       if (!next) return current;
       if (!current) return next;
-      const currentInvalid = current.zone.type === "INVALID";
-      const nextInvalid = next.zone.type === "INVALID";
-      if (currentInvalid !== nextInvalid) {
-        return nextInvalid ? current : next;
-      }
-      if (next.zone.layer < current.zone.layer) {
-        return next;
-      }
-      return current;
+      const [ci, ni] = [current.zone.type === "INVALID", next.zone.type === "INVALID"];
+      if (ci !== ni) return ni ? current : next;
+      return next.zone.layer < current.zone.layer ? next : current;
     }
 
     function buildBetweenSiblingsDescriptors() {
@@ -639,19 +503,11 @@
     }
 
     function findBetweenSiblingsZoneAtPoint(x, y) {
-      const descriptors = buildBetweenSiblingsDescriptors();
       let best = null;
-      for (const descriptor of descriptors) {
+      for (const descriptor of buildBetweenSiblingsDescriptors()) {
         if (!descriptor.hit(x, y)) continue;
-        const candidate = {
-          panelId: descriptor.panelId,
-          info: null,
-          zone: descriptor.zone,
-          metric: descriptor.distance(x, y)
-        };
-        if (!best || candidate.metric < best.metric) {
-          best = candidate;
-        }
+        const candidate = { panelId: descriptor.panelId, info: null, zone: descriptor.zone, metric: descriptor.distance(x, y) };
+        if (!best || candidate.metric < best.metric) best = candidate;
       }
       return best;
     }
