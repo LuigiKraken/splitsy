@@ -69,6 +69,7 @@ const DEFAULT_PREVIEW_MODE = "preview";
 const STORAGE_SCHEMA_VERSION = 1;
 const LAYOUT_STORAGE_KEY = `dock-layout-state-v${STORAGE_SCHEMA_VERSION}`;
 let previewMode = DEFAULT_PREVIEW_MODE;
+const VIEW_MODES = ["hitbox", "preview", "combined"];
 
 const CREATE_BUTTON_HOLD_MS = 160;
 const CREATE_BUTTON_DRAG_START_PX = 6;
@@ -252,7 +253,7 @@ function restorePersistedLayoutState() {
   if (!getFirstPanel(parsed.root)) return false;
 
   root = parsed.root;
-  previewMode = parsed.previewMode === "hitbox" ? "hitbox" : DEFAULT_PREVIEW_MODE;
+  previewMode = VIEW_MODES.includes(parsed.previewMode) ? parsed.previewMode : DEFAULT_PREVIEW_MODE;
   activePanelId = typeof parsed.activePanelId === "string" ? parsed.activePanelId : null;
 
   const stats = collectTreeStats(root);
@@ -455,6 +456,7 @@ function showDropPreview(zone) {
   treeDom.style.height = "100%";
   previewLayer.innerHTML = "";
   previewLayer.appendChild(treeDom);
+  previewLayer.classList.toggle("combined-tone", previewMode === "combined");
   previewLayer.classList.add("active");
   workspaceEl.classList.add("previewing");
   dragController.setDragVisualState("preview");
@@ -464,7 +466,7 @@ function scheduleIdlePreview() {
   dragController.schedulePreviewIdle(() => {
     const dragCtx = getDragCtx();
     const lastDragPoint = getLastDragPoint();
-    if (!dragCtx || previewMode !== "preview" || !lastDragPoint) return;
+    if (!dragCtx || (previewMode !== "preview" && previewMode !== "combined") || !lastDragPoint) return;
     const panelInfoMap = buildPanelInfoMap(root);
     const hover = resolveHoverAtPoint(panelInfoMap, lastDragPoint.x, lastDragPoint.y);
     if (!hover || !hover.zone) return;
@@ -507,19 +509,56 @@ function showHitboxStateAtPoint(x, y) {
 
 function handlePreviewModeDragOver(x, y) {
   dragController.handlePreviewModeDragOver(x, y, () => {
-    showHitboxStateAtPoint(x, y);
+    showPreviewSearchStateAtPoint(x, y);
+    scheduleIdlePreview();
+  });
+}
+
+function showPreviewSearchStateAtPoint(x, y) {
+  clearDropPreviewLayer();
+  dragController.setDragVisualState("preview");
+  dragController.setHoverPreview(null);
+  clearDragOverlay();
+  const panelInfoMap = buildPanelInfoMap(root);
+  const hover = resolveHoverAtPoint(panelInfoMap, x, y);
+  if (!hover) {
+    statusEl.textContent = "Move over a panel and pause briefly to see the drop preview.";
+    return;
+  }
+  if (!hover.zone) {
+    statusEl.textContent = "No valid drop zone here. Move and pause in another spot.";
+    return;
+  }
+  if (hover.zone.type === "INVALID") {
+    statusEl.textContent = `Preview blocked: ${hover.zone.reason}`;
+    return;
+  }
+  statusEl.textContent = "Pause briefly to show drop preview.";
+}
+
+function handleCombinedModeDragOver(x, y) {
+  dragController.handlePreviewModeDragOver(x, y, () => {
+    clearDropPreviewLayer();
+    dragController.setHoverPreview(null);
+    updateHoverFromPoint(x, y);
+    statusEl.textContent = "Combined mode: hitboxes visible while moving. Pause briefly for a softer preview replacement.";
     scheduleIdlePreview();
   });
 }
 
 function updateViewModeButton() {
-  viewModeBtn.textContent = previewMode === "hitbox" ? "Mode: Hitbox" : "Mode: Preview";
-  viewModeBtn.setAttribute(
-    "aria-label",
-    previewMode === "hitbox"
-      ? "Switch to preview mode"
-      : "Switch to hitbox mode"
-  );
+  if (previewMode === "hitbox") {
+    viewModeBtn.textContent = "Mode: Hitbox";
+    viewModeBtn.setAttribute("aria-label", "Switch to preview mode");
+    return;
+  }
+  if (previewMode === "preview") {
+    viewModeBtn.textContent = "Mode: Preview";
+    viewModeBtn.setAttribute("aria-label", "Switch to combined mode");
+    return;
+  }
+  viewModeBtn.textContent = "Mode: Combined";
+  viewModeBtn.setAttribute("aria-label", "Switch to hitbox mode");
 }
 
 function cleanupDragUI(message = null, shouldRender = false) {
@@ -585,8 +624,12 @@ function startDragSession(sourcePanelId, tab, point, statusMessage) {
   dragController.setHoverAnchorPoint(null);
   dragController.stopPreviewIdleTimer();
   dragController.stopDragPreviewTimer();
-  updateHoverFromPoint(point.x, point.y);
   if (previewMode === "preview") {
+    showPreviewSearchStateAtPoint(point.x, point.y);
+  } else {
+    updateHoverFromPoint(point.x, point.y);
+  }
+  if (previewMode === "preview" || previewMode === "combined") {
     dragController.setHoverAnchorPoint(point);
     scheduleIdlePreview();
   }
@@ -615,7 +658,7 @@ function onTabDragStart(e) {
     const dragCtx = getDragCtx();
     const lastDragPoint = getLastDragPoint();
     if (!dragCtx || !lastDragPoint) return;
-    if (previewMode !== "preview") {
+    if (previewMode !== "preview" && previewMode !== "combined") {
       updateHoverFromPoint(lastDragPoint.x, lastDragPoint.y);
     }
   }, 70);
@@ -673,6 +716,8 @@ function onPanelDragOver(e) {
   setLastDragPoint({ x: e.clientX, y: e.clientY });
   if (previewMode === "hitbox") {
     updateHoverFromPoint(e.clientX, e.clientY);
+  } else if (previewMode === "combined") {
+    handleCombinedModeDragOver(e.clientX, e.clientY);
   } else {
     handlePreviewModeDragOver(e.clientX, e.clientY);
   }
@@ -737,6 +782,8 @@ function onWorkspaceDragOver(e) {
   setLastDragPoint({ x: e.clientX, y: e.clientY });
   if (previewMode === "hitbox") {
     updateHoverFromPoint(e.clientX, e.clientY);
+  } else if (previewMode === "combined") {
+    handleCombinedModeDragOver(e.clientX, e.clientY);
   } else {
     handlePreviewModeDragOver(e.clientX, e.clientY);
   }
@@ -836,6 +883,8 @@ function updateCreateButtonPointer(point) {
   setLastDragPoint(point);
   if (previewMode === "hitbox") {
     updateHoverFromPoint(point.x, point.y);
+  } else if (previewMode === "combined") {
+    handleCombinedModeDragOver(point.x, point.y);
   } else {
     handlePreviewModeDragOver(point.x, point.y);
   }
@@ -940,7 +989,9 @@ resetBtn.addEventListener("click", () => {
 });
 
 viewModeBtn.addEventListener("click", () => {
-  previewMode = previewMode === "hitbox" ? "preview" : "hitbox";
+  const modeIndex = VIEW_MODES.indexOf(previewMode);
+  const safeIndex = modeIndex === -1 ? 0 : modeIndex;
+  previewMode = VIEW_MODES[(safeIndex + 1) % VIEW_MODES.length];
   updateViewModeButton();
   const dragCtx = getDragCtx();
   const lastDragPoint = getLastDragPoint();
@@ -949,17 +1000,28 @@ viewModeBtn.addEventListener("click", () => {
     dragController.setHoverAnchorPoint(lastDragPoint);
     dragController.setDragVisualState("hitbox");
     clearDropPreviewLayer();
-    updateHoverFromPoint(lastDragPoint.x, lastDragPoint.y);
+    if (previewMode === "preview") {
+      showPreviewSearchStateAtPoint(lastDragPoint.x, lastDragPoint.y);
+    } else {
+      updateHoverFromPoint(lastDragPoint.x, lastDragPoint.y);
+    }
     if (previewMode === "preview") {
       scheduleIdlePreview();
-      statusEl.textContent = "Preview mode enabled. Keep moving to inspect hitboxes, pause briefly to see drop preview.";
+      statusEl.textContent = "Preview mode enabled. Hitboxes stay hidden while moving; pause briefly to see the drop preview.";
+    } else if (previewMode === "combined") {
+      scheduleIdlePreview();
+      statusEl.textContent = "Combined mode enabled. Hitboxes show while moving; pause to see a softer preview replacement.";
     } else {
       statusEl.textContent = "Hitbox mode enabled. Showing raw hit zones while dragging.";
     }
   } else {
-    statusEl.textContent = previewMode === "preview"
-      ? "Preview mode enabled. While dragging: move for hitboxes, pause briefly for a live drop preview."
-      : "Hitbox mode enabled. Drag tabs to inspect drop zones.";
+    if (previewMode === "preview") {
+      statusEl.textContent = "Preview mode enabled. While dragging: move without hitboxes, then pause briefly for a live drop preview.";
+    } else if (previewMode === "combined") {
+      statusEl.textContent = "Combined mode enabled. While dragging: hitboxes stay visible while moving, then a softer preview replaces them on pause.";
+    } else {
+      statusEl.textContent = "Hitbox mode enabled. Drag tabs to inspect drop zones.";
+    }
   }
   persistLayoutState();
 });

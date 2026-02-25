@@ -160,6 +160,10 @@ html, body {
   transition: opacity 120ms linear;
 }
 .workspace-preview.active { opacity: 1; }
+.workspace-preview.combined-tone {
+  filter: saturate(0.72) brightness(1.04);
+  opacity: 0.88;
+}
 .workspace-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 70; }
 .workspace-overlay .zone {
   position: absolute;

@@ -35,7 +35,7 @@ window.DOCK_CONFIG = {
 
   // Milliseconds of relative pointer stillness before preview mode renders a
   // live "drop result" preview.
-  previewIdleMs: 500,
+  previewIdleMs: 300,
 
   // Pointer movement threshold (px) treated as intentional motion during drag.
   // Helps filter micro-jitter so preview transitions feel stable.
