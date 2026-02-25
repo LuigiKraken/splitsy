@@ -1,9 +1,9 @@
 const DEFAULT_CONFIG = {
   centerFraction: 0.24,
-  minBandPx: 20,
+  minBandPx: 12,
   maxDepth: 6,
-  minBoxWidthPx: 100,
-  minBoxHeightPx: 100,
+  minBoxWidthPx: 56,
+  minBoxHeightPx: 56,
   maxTotalBoxCount: 30,
   maxHorizontalStack: 6,
   maxVerticalStack: 6,

@@ -6,7 +6,7 @@ window.DOCK_CONFIG = {
 
   // Minimum thickness (px) used for directional interaction bands.
   // Prevents outer layers from becoming too thin to target accurately.
-  minBandPx: 20,
+  minBandPx: 12,
 
   // Maximum number of ancestor levels considered for directional layers.
   // Higher values expose deeper structural operations, but can increase UI
@@ -15,11 +15,11 @@ window.DOCK_CONFIG = {
 
   // Minimum panel width (px) allowed for split/wrap/equalize operations.
   // Blocks operations that would create or use panels smaller than this.
-  minBoxWidthPx: 100,
+  minBoxWidthPx: 56,
 
   // Minimum panel height (px) allowed for split/wrap/equalize operations.
   // Keeps panels readable and avoids unusable tiny targets.
-  minBoxHeightPx: 100,
+  minBoxHeightPx: 56,
 
   // Global cap on total box/tab count in the layout tree.
   // Useful as a safety guard for performance and stress-testing limits.

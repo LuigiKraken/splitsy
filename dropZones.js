@@ -203,6 +203,43 @@
       getRoot,
       findNodeById
     } = deps;
+    const outcomePalette = [
+      "rgba(239, 68, 68, 0.30)",
+      "rgba(249, 115, 22, 0.30)",
+      "rgba(234, 179, 8, 0.30)",
+      "rgba(132, 204, 22, 0.30)",
+      "rgba(34, 197, 94, 0.30)",
+      "rgba(20, 184, 166, 0.30)",
+      "rgba(14, 165, 233, 0.30)",
+      "rgba(59, 130, 246, 0.30)",
+      "rgba(99, 102, 241, 0.30)",
+      "rgba(139, 92, 246, 0.30)",
+      "rgba(168, 85, 247, 0.30)",
+      "rgba(217, 70, 239, 0.30)",
+      "rgba(236, 72, 153, 0.30)",
+      "rgba(244, 63, 94, 0.30)",
+      "rgba(251, 146, 60, 0.30)",
+      "rgba(163, 230, 53, 0.30)",
+      "rgba(45, 212, 191, 0.30)",
+      "rgba(6, 182, 212, 0.30)",
+      "rgba(56, 189, 248, 0.30)",
+      "rgba(96, 165, 250, 0.30)",
+      "rgba(129, 140, 248, 0.30)",
+      "rgba(167, 139, 250, 0.30)",
+      "rgba(192, 132, 252, 0.30)",
+      "rgba(244, 114, 182, 0.30)"
+    ];
+
+    function zoneOutcomeKey(zone) {
+      if (!zone || zone.type === "INVALID") return "INVALID";
+      return [
+        zone.type || "",
+        zone.direction || "",
+        zone.panelId || "",
+        zone.targetId || "",
+        Number.isFinite(zone.insertIndex) ? zone.insertIndex : ""
+      ].join("|");
+    }
 
     function isDirectionalLayerReachable(info, ancestorIndex, direction) {
       if (!info || !Array.isArray(info.ancestors) || ancestorIndex <= 0) return true;
@@ -249,9 +286,22 @@
       };
     }
 
+    function canHostPanelWithinBounds(bounds) {
+      return bounds.width >= config.minBoxWidthPx && bounds.height >= config.minBoxHeightPx;
+    }
+
+    function canSplitBoundsIntoSiblings(bounds, axis, siblingCount) {
+      if (!bounds || siblingCount < 1) return false;
+      if (!canHostPanelWithinBounds(bounds)) return false;
+      if (axis === "column") {
+        return (bounds.width / siblingCount) >= config.minBoxWidthPx;
+      }
+      return (bounds.height / siblingCount) >= config.minBoxHeightPx;
+    }
+
     function resolveDirectionalZone(info, panelBounds, layer, direction) {
       if (layer === 1) {
-        if (panelBounds.width < config.minBoxWidthPx || panelBounds.height < config.minBoxHeightPx) {
+        if (!canHostPanelWithinBounds(panelBounds)) {
           return {
             layer,
             direction,
@@ -268,6 +318,15 @@
             type: "INVALID",
             targetId: info.panel.id,
             reason: `Max ${splitAxis === "column" ? "horizontal" : "vertical"} stack reached.`
+          };
+        }
+        if (!canSplitBoundsIntoSiblings(panelBounds, splitAxis, 2)) {
+          return {
+            layer,
+            direction,
+            type: "INVALID",
+            targetId: info.panel.id,
+            reason: "Split would create panels smaller than configured minimum size."
           };
         }
         return {
@@ -304,7 +363,7 @@
         };
       }
       const ancestorBounds = ancestorEl.getBoundingClientRect();
-      if (ancestorBounds.width < config.minBoxWidthPx || ancestorBounds.height < config.minBoxHeightPx) {
+      if (!canHostPanelWithinBounds(ancestorBounds)) {
         return {
           layer,
           direction,
@@ -323,6 +382,15 @@
             type: "INVALID",
             targetId: ancestor.id,
             reason: `Max ${ancestor.axis === "column" ? "horizontal" : "vertical"} stack reached.`
+          };
+        }
+        if (!canSplitBoundsIntoSiblings(ancestorBounds, ancestor.axis, nextSiblingCount)) {
+          return {
+            layer,
+            direction,
+            type: "INVALID",
+            targetId: ancestor.id,
+            reason: "Equalize would create panels smaller than configured minimum size."
           };
         }
         const childIdx = ancestor.children.findIndex((c) => c.id === childSubtree.id);
@@ -356,6 +424,15 @@
           type: "INVALID",
           targetId: ancestor.id,
           reason: `Max ${wrapAxis === "column" ? "horizontal" : "vertical"} stack reached.`
+        };
+      }
+      if (!canSplitBoundsIntoSiblings(ancestorBounds, wrapAxis, 2)) {
+        return {
+          layer,
+          direction,
+          type: "INVALID",
+          targetId: ancestor.id,
+          reason: "Wrap would create panels smaller than configured minimum size."
         };
       }
 
@@ -478,7 +555,10 @@
         if (!found || found.node.type !== "container") continue;
         const containerNode = found.node;
         if (containerNode.children.length < 2) continue;
-        if (!canAddSiblingToAxis(containerNode.axis, containerNode.children.length + 1)) continue;
+        const nextSiblingCount = containerNode.children.length + 1;
+        if (!canAddSiblingToAxis(containerNode.axis, nextSiblingCount)) continue;
+        const containerBounds = containerEl.getBoundingClientRect();
+        if (!canSplitBoundsIntoSiblings(containerBounds, containerNode.axis, nextSiblingCount)) continue;
 
         const childEls = Array.from(containerEl.children).filter((el) => el.classList.contains("child"));
         if (childEls.length < 2) continue;
@@ -618,6 +698,22 @@
       workspaceEl.querySelectorAll(".panel.drag-hover").forEach((p) => p.classList.remove("drag-hover"));
       const hasSelection = !!selectedZone;
       const overlayRect = overlay.getBoundingClientRect();
+      const outcomeColorMap = new Map();
+      let nextOutcomeColorIndex = 0;
+
+      function resolveZoneColor(zone) {
+        if (!zone || zone.type === "INVALID") {
+          return actionColors.INVALID;
+        }
+        const key = zoneOutcomeKey(zone);
+        if (!outcomeColorMap.has(key)) {
+          const paletteColor = outcomePalette[nextOutcomeColorIndex % outcomePalette.length];
+          outcomeColorMap.set(key, paletteColor);
+          nextOutcomeColorIndex += 1;
+        }
+        return outcomeColorMap.get(key);
+      }
+
       for (const [panelId, info] of panelInfoMap.entries()) {
         const panelEl = workspaceEl.querySelector(`.panel[data-panel-id="${panelId}"]`);
         if (!panelEl) continue;
@@ -641,7 +737,7 @@
             zoneEl.style.opacity = "0.68";
           }
 
-          zoneEl.style.background = actionColors[zone.type] || actionColors.INVALID;
+          zoneEl.style.background = resolveZoneColor(zone);
           const isSelected = selectedZone && zonesMatch(zone, selectedZone);
           if (isSelected) {
             zoneEl.classList.add("selected");
