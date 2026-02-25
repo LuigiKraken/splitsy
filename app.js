@@ -98,6 +98,7 @@ const treeViewEl = document.getElementById("treeView");
 const createBtn = document.getElementById("createBtn");
 const resetBtn = document.getElementById("resetBtn");
 const viewModeBtn = document.getElementById("viewModeBtn");
+const darkModeBtn = document.getElementById("darkModeBtn");
 const actionColors = {
   STACK: "rgba(110, 231, 255, 0.30)",
   SPLIT: "rgba(255, 217, 97, 0.22)",
@@ -153,6 +154,26 @@ function applyRuntimeStyleConfig() {
 
 applyRuntimeStyleConfig();
 
+const DARK_MODE_STORAGE_KEY = "dock-dark-mode";
+let isDarkMode = false;
+
+function applyDarkMode(dark) {
+  isDarkMode = dark;
+  document.documentElement.dataset.theme = dark ? "dark" : "";
+  darkModeBtn.textContent = dark ? "Light Mode" : "Dark Mode";
+  try { localStorage.setItem(DARK_MODE_STORAGE_KEY, dark ? "1" : "0"); } catch (err) {}
+}
+
+(function initDarkMode() {
+  let stored = false;
+  try { stored = localStorage.getItem(DARK_MODE_STORAGE_KEY) === "1"; } catch (err) {}
+  applyDarkMode(stored);
+}());
+
+darkModeBtn.addEventListener("click", () => {
+  applyDarkMode(!isDarkMode);
+});
+
 function nextId(prefix) {
   return `${prefix}-${idCounter++}`;
 }
@@ -182,6 +203,20 @@ function createContainer(axis, children) {
     axis,
     sizes: children.map(() => size),
     children
+  };
+}
+
+function makeNodeFactories(idSeed, panelSeed) {
+  let localIdCount = idSeed;
+  let localPanelCount = panelSeed;
+  const localNextId = (prefix) => `${prefix}-${localIdCount++}`;
+  return {
+    createBoxTab: () => ({ id: localNextId("tab"), num: localPanelCount++ }),
+    createPanelNode: (tab) => ({ type: "panel", id: localNextId("panel"), tabs: [tab], activeTabId: tab.id }),
+    createContainer: (axis, children) => {
+      const size = 1 / children.length;
+      return { type: "container", id: localNextId("container"), axis, sizes: children.map(() => size), children };
+    }
   };
 }
 
@@ -297,25 +332,6 @@ const canAddSiblingToAxis = (axis, nextSiblingCount) =>
 const canCreateAnotherBox = () =>
   getTotalBoxCount(root) < CONFIG.maxTotalBoxCount;
 
-const onResizeHandlePointerDown = (e, panelId, corner) => {
-  if (resizeController) resizeController.onResizeHandlePointerDown(e, panelId, corner);
-};
-
-const onWorkspacePointerDownForResize = (e) => {
-  if (resizeController) resizeController.onWorkspacePointerDown(e);
-};
-
-const onResizePointerMove = (e) => {
-  if (resizeController) resizeController.onResizePointerMove(e);
-};
-
-const onResizePointerUp = (e) => {
-  if (resizeController) resizeController.onResizePointerUp(e);
-};
-
-const onResizePointerCancel = (e) => {
-  if (resizeController) resizeController.onResizePointerCancel(e);
-};
 
 const dropZonesApi = window.DropZones;
 if (!dropZonesApi) {
@@ -338,34 +354,21 @@ const dropActionsApi = window.DropActions;
 if (!dropActionsApi) {
   throw new Error("Missing DropActions. Ensure dropActions.js is loaded before app.js.");
 }
-function createDropExecutor(runtime) {
-  return dropActionsApi.create({
-    getRoot: runtime.getRoot,
-    setRoot: runtime.setRoot,
-    setActivePanelId: runtime.setActivePanelId,
-    cloneNode,
-    findNodeById,
-    removePanelAndCollapse,
-    canCreateAnotherBox: runtime.canCreateAnotherBox,
-    createBoxTab: runtime.createBoxTab,
-    createPanelNode: runtime.createPanelNode,
-    createContainer: runtime.createContainer,
-    createFallbackRoot: runtime.createFallbackRoot,
-    axisForDirection,
-    isBeforeDirection,
-    clamp: (v, min, max) => Math.max(min, Math.min(max, v))
-  });
-}
-
-const { executeDrop } = createDropExecutor({
+const { executeDrop } = dropActionsApi.create({
   getRoot: () => root,
   setRoot: (nextRoot) => { root = nextRoot; },
   setActivePanelId: (panelId) => { activePanelId = panelId; },
+  cloneNode,
+  findNodeById,
+  removePanelAndCollapse,
   canCreateAnotherBox,
   createBoxTab,
   createPanelNode,
   createContainer,
-  createFallbackRoot: () => createPanelNode(createBoxTab())
+  createFallbackRoot: () => createPanelNode(createBoxTab()),
+  axisForDirection,
+  isBeforeDirection,
+  clamp: (v, min, max) => Math.max(min, Math.min(max, v))
 });
 
 const rendererApi = window.DockRenderer;
@@ -394,7 +397,7 @@ const {
     onPanelClick,
     onPanelDragOver,
     onPanelDrop,
-    onResizeHandlePointerDown
+    onResizeHandlePointerDown: (e, panelId, corner) => resizeController.onResizeHandlePointerDown(e, panelId, corner)
   }
 });
 
@@ -575,39 +578,27 @@ function buildDropPreviewTree(zone) {
     root: cloneNode(root),
     activePanelId
   };
-  let previewIdCounter = idCounter;
-  let previewPanelCounter = panelCounter;
-  const nextPreviewId = (prefix) => `${prefix}-${previewIdCounter++}`;
-  const createPreviewBoxTab = () => ({
-    id: nextPreviewId("tab"),
-    num: previewPanelCounter++
-  });
-  const createPreviewPanelNode = (initialTab) => ({
-    type: "panel",
-    id: nextPreviewId("panel"),
-    tabs: [initialTab],
-    activeTabId: initialTab.id
-  });
-  const createPreviewContainer = (axis, children) => {
-    const size = 1 / children.length;
-    return {
-      type: "container",
-      id: nextPreviewId("container"),
-      axis,
-      sizes: children.map(() => size),
-      children
-    };
-  };
+  const {
+    createBoxTab: createPreviewBoxTab,
+    createPanelNode: createPreviewPanelNode,
+    createContainer: createPreviewContainer
+  } = makeNodeFactories(idCounter, panelCounter);
 
-  const { executeDrop: executePreviewDrop } = createDropExecutor({
+  const { executeDrop: executePreviewDrop } = dropActionsApi.create({
     getRoot: () => previewState.root,
     setRoot: (nextRoot) => { previewState.root = nextRoot; },
     setActivePanelId: (panelId) => { previewState.activePanelId = panelId; },
+    cloneNode,
+    findNodeById,
+    removePanelAndCollapse,
     canCreateAnotherBox: () => getTotalBoxCount(previewState.root) < CONFIG.maxTotalBoxCount,
     createBoxTab: createPreviewBoxTab,
     createPanelNode: createPreviewPanelNode,
     createContainer: createPreviewContainer,
-    createFallbackRoot: () => createPreviewPanelNode(createPreviewBoxTab())
+    createFallbackRoot: () => createPreviewPanelNode(createPreviewBoxTab()),
+    axisForDirection,
+    isBeforeDirection,
+    clamp: (v, min, max) => Math.max(min, Math.min(max, v))
   });
 
   executePreviewDrop(zone, dragCtx.tab, dragCtx.sourcePanelId);
@@ -652,22 +643,6 @@ function scheduleIdlePreview() {
     showDropPreview(hover.zone);
     statusEl.textContent = `Preview: ${formatZoneSummary(hover.zone, true)}. Hold still to inspect, move to continue searching.`;
   }, PREVIEW_IDLE_MS);
-}
-
-function showHitboxStateAtPoint(x, y) {
-  clearDropPreviewLayer();
-  dragController.setHoverPreview(null);
-  clearDragOverlay();
-  const hover = resolveHoverAtPoint(buildPanelInfoMap(root), x, y);
-  if (!hover) {
-    statusEl.textContent = "Move over a panel and hold still to see drop preview.";
-  } else if (!hover.zone) {
-    statusEl.textContent = "No valid drop zone here. Move and hold in another spot.";
-  } else if (hover.zone.type === "INVALID") {
-    statusEl.textContent = `Blocked by limits: ${hover.zone.reason}`;
-  } else {
-    statusEl.textContent = "Hold still briefly to show drop preview. Move to keep searching.";
-  }
 }
 
 function showPreviewSearchStateAtPoint(x, y) {
@@ -1221,14 +1196,14 @@ window.addEventListener("drop", () => {
   if (!dragController.hasTransientState()) return;
   cleanupDragUI(null, true);
 });
-window.addEventListener("pointermove", onResizePointerMove);
-window.addEventListener("pointerup", onResizePointerUp);
-window.addEventListener("pointercancel", onResizePointerCancel);
+window.addEventListener("pointermove", (e) => resizeController.onResizePointerMove(e));
+window.addEventListener("pointerup", (e) => resizeController.onResizePointerUp(e));
+window.addEventListener("pointercancel", (e) => resizeController.onResizePointerCancel(e));
 window.addEventListener("resize", onWindowResize);
 
 workspaceEl.addEventListener("dragover", onWorkspaceDragOver);
 workspaceEl.addEventListener("drop", onWorkspaceDrop);
-workspaceEl.addEventListener("pointerdown", onWorkspacePointerDownForResize);
+workspaceEl.addEventListener("pointerdown", (e) => resizeController.onWorkspacePointerDown(e));
 
 updateViewModeButton();
 syncResizeAffordanceMode();

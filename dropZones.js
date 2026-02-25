@@ -84,6 +84,14 @@
     return [{ x: right, y: top }, { x: right, y: bottom }, { x: cx, y: cy }];
   }
 
+  function clipAlongAxis(poly, min, max, isHorizontal) {
+    const intersect = isHorizontal ? intersectSegmentWithHorizontal : intersectSegmentWithVertical;
+    const coord = isHorizontal ? (p) => p.y : (p) => p.x;
+    poly = clipPolygon(poly, (p) => coord(p) >= min, (a, b) => intersect(a, b, min));
+    poly = clipPolygon(poly, (p) => coord(p) <= max, (a, b) => intersect(a, b, max));
+    return poly;
+  }
+
   function getDirectionalBandPolygonByRatio(bounds, direction, innerRatio, outerRatio) {
     const inner = clamp(innerRatio, 0, 1);
     const outer = clamp(outerRatio, 0, 1);
@@ -93,64 +101,17 @@
     const halfW = bounds.width / 2;
     const halfH = bounds.height / 2;
 
-    let poly = getDirectionalBasePolygon(bounds, direction);
+    const poly = getDirectionalBasePolygon(bounds, direction);
     if (!poly.length) return poly;
 
-    if (direction === "LEFT") {
-      const xMin = cx - outer * halfW;
-      const xMax = cx - inner * halfW;
-      poly = clipPolygon(
-        poly,
-        (p) => p.x >= xMin,
-        (a, b) => intersectSegmentWithVertical(a, b, xMin)
-      );
-      poly = clipPolygon(
-        poly,
-        (p) => p.x <= xMax,
-        (a, b) => intersectSegmentWithVertical(a, b, xMax)
-      );
-    } else if (direction === "RIGHT") {
-      const xMin = cx + inner * halfW;
-      const xMax = cx + outer * halfW;
-      poly = clipPolygon(
-        poly,
-        (p) => p.x >= xMin,
-        (a, b) => intersectSegmentWithVertical(a, b, xMin)
-      );
-      poly = clipPolygon(
-        poly,
-        (p) => p.x <= xMax,
-        (a, b) => intersectSegmentWithVertical(a, b, xMax)
-      );
-    } else if (direction === "TOP") {
-      const yMin = cy - outer * halfH;
-      const yMax = cy - inner * halfH;
-      poly = clipPolygon(
-        poly,
-        (p) => p.y >= yMin,
-        (a, b) => intersectSegmentWithHorizontal(a, b, yMin)
-      );
-      poly = clipPolygon(
-        poly,
-        (p) => p.y <= yMax,
-        (a, b) => intersectSegmentWithHorizontal(a, b, yMax)
-      );
-    } else {
-      const yMin = cy + inner * halfH;
-      const yMax = cy + outer * halfH;
-      poly = clipPolygon(
-        poly,
-        (p) => p.y >= yMin,
-        (a, b) => intersectSegmentWithHorizontal(a, b, yMin)
-      );
-      poly = clipPolygon(
-        poly,
-        (p) => p.y <= yMax,
-        (a, b) => intersectSegmentWithHorizontal(a, b, yMax)
-      );
+    if (direction === "LEFT" || direction === "RIGHT") {
+      const xMin = direction === "LEFT" ? cx - outer * halfW : cx + inner * halfW;
+      const xMax = direction === "LEFT" ? cx - inner * halfW : cx + outer * halfW;
+      return clipAlongAxis(poly, xMin, xMax, false);
     }
-
-    return poly;
+    const yMin = direction === "TOP" ? cy - outer * halfH : cy + inner * halfH;
+    const yMax = direction === "TOP" ? cy - inner * halfH : cy + outer * halfH;
+    return clipAlongAxis(poly, yMin, yMax, true);
   }
 
   const getDisplayDirectionalBandPolygon = (bounds, layer, totalLayers, direction, startRatio) => {
@@ -446,57 +407,34 @@
         const childEls = Array.from(containerEl.children).filter((el) => el.classList.contains("child"));
         if (childEls.length < 2) continue;
 
+        const isHoriz = containerNode.axis === "column";
+        const direction = isHoriz ? "RIGHT" : "BOTTOM";
+
         for (let i = 0; i < childEls.length - 1; i += 1) {
           const a = childEls[i].getBoundingClientRect();
           const b = childEls[i + 1].getBoundingClientRect();
           const childNode = containerNode.children[i];
           const childPanelId = childNode && childNode.type === "panel" ? childNode.id : null;
 
-          if (containerNode.axis === "column") {
-            const overlapTop = Math.max(a.top, b.top);
-            const overlapBottom = Math.min(a.bottom, b.bottom);
-            if (overlapBottom <= overlapTop) continue;
-            const boundary = (a.right + b.left) / 2;
-            const minX = Math.min(a.right, b.left) - config.betweenSiblingHitSlopPx;
-            const maxX = Math.max(a.right, b.left) + config.betweenSiblingHitSlopPx;
-            descriptors.push({
-              layer: 2,
-              direction: "RIGHT",
-              panelId: childPanelId,
-              zone: {
-                layer: 2,
-                direction: "RIGHT",
-                type: "EQUALIZE",
-                targetId: containerNode.id,
-                insertIndex: i + 1,
-                reason: "Between sibling panels"
-              },
-              hit: (x, y) => x >= minX && x <= maxX && y >= overlapTop && y <= overlapBottom,
-              distance: (x) => Math.abs(x - boundary)
-            });
-          } else {
-            const overlapLeft = Math.max(a.left, b.left);
-            const overlapRight = Math.min(a.right, b.right);
-            if (overlapRight <= overlapLeft) continue;
-            const boundary = (a.bottom + b.top) / 2;
-            const minY = Math.min(a.bottom, b.top) - config.betweenSiblingHitSlopPx;
-            const maxY = Math.max(a.bottom, b.top) + config.betweenSiblingHitSlopPx;
-            descriptors.push({
-              layer: 2,
-              direction: "BOTTOM",
-              panelId: childPanelId,
-              zone: {
-                layer: 2,
-                direction: "BOTTOM",
-                type: "EQUALIZE",
-                targetId: containerNode.id,
-                insertIndex: i + 1,
-                reason: "Between sibling panels"
-              },
-              hit: (x, y) => y >= minY && y <= maxY && x >= overlapLeft && x <= overlapRight,
-              distance: (_, y) => Math.abs(y - boundary)
-            });
-          }
+          const edgeA = isHoriz ? a.right : a.bottom;
+          const edgeB = isHoriz ? b.left : b.top;
+          const overlapMin = Math.max(isHoriz ? a.top : a.left, isHoriz ? b.top : b.left);
+          const overlapMax = Math.min(isHoriz ? a.bottom : a.right, isHoriz ? b.bottom : b.right);
+          if (overlapMax <= overlapMin) continue;
+
+          const boundary = (edgeA + edgeB) / 2;
+          const slopMin = Math.min(edgeA, edgeB) - config.betweenSiblingHitSlopPx;
+          const slopMax = Math.max(edgeA, edgeB) + config.betweenSiblingHitSlopPx;
+          descriptors.push({
+            layer: 2,
+            direction,
+            panelId: childPanelId,
+            zone: { layer: 2, direction, type: "EQUALIZE", targetId: containerNode.id, insertIndex: i + 1, reason: "Between sibling panels" },
+            hit: isHoriz
+              ? (x, y) => x >= slopMin && x <= slopMax && y >= overlapMin && y <= overlapMax
+              : (x, y) => y >= slopMin && y <= slopMax && x >= overlapMin && x <= overlapMax,
+            distance: isHoriz ? (x) => Math.abs(x - boundary) : (_, y) => Math.abs(y - boundary)
+          });
         }
       }
       return descriptors;
