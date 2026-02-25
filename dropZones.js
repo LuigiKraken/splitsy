@@ -390,7 +390,9 @@
         });
       }
 
-      const interactionBounds = getInteractionBounds(panelBounds, tabsBounds);
+      // Zones are computed from the full panel rectangle. The tab strip is
+      // treated as content and must not shrink the zone interaction surface.
+      const interactionBounds = panelBounds;
       const centerRect = getCenterRect(interactionBounds, config);
       descriptors.push({
         key: "display-stack-center",
