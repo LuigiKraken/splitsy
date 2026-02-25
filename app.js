@@ -382,7 +382,17 @@ const {
 
 function renderAndPersist() {
   render();
+  syncOverlayForCurrentMode();
   persistLayoutState();
+}
+
+function syncOverlayForCurrentMode() {
+  if (getDragCtx()) return;
+  if (previewMode === "hitbox") {
+    drawZonesForWorkspace(buildPanelInfoMap(root), null, null);
+  } else {
+    clearDragOverlay();
+  }
 }
 
 function removeDragGhost() {
@@ -592,8 +602,13 @@ function updateHoverFromPoint(x, y) {
   const hover = resolveHoverAtPoint(panelInfoMap, x, y);
   if (!hover) {
     dragController.setHoverPreview(null);
-    clearDragOverlay();
-    statusEl.textContent = "Move over a panel to preview drop zones.";
+    if (previewMode === "hitbox") {
+      drawZonesForWorkspace(panelInfoMap, null, null);
+      statusEl.textContent = "Hitbox mode: all drop zones remain visible while dragging.";
+    } else {
+      clearDragOverlay();
+      statusEl.textContent = "Move over a panel to preview drop zones.";
+    }
     return;
   }
 
@@ -1040,6 +1055,7 @@ viewModeBtn.addEventListener("click", () => {
       statusEl.textContent = "Hitbox mode enabled. Drag tabs to inspect drop zones.";
     }
   }
+  syncOverlayForCurrentMode();
   persistLayoutState();
 });
 
