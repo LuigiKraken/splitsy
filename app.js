@@ -47,6 +47,7 @@ function normalizeConfig(raw) {
     defaultPreviewMode: asStringEnum(input.defaultPreviewMode, DEFAULT_CONFIG.defaultPreviewMode, VIEW_MODES),
     persistLayout: asBoolean(input.persistLayout, DEFAULT_CONFIG.persistLayout),
     allowTabStripStackZone: asBoolean(input.allowTabStripStackZone, DEFAULT_CONFIG.allowTabStripStackZone),
+    tabStripStackZoneMinHeightPx: asPositiveNumber(input.tabStripStackZoneMinHeightPx, DEFAULT_CONFIG.tabStripStackZoneMinHeightPx),
     resizeSnapLevels: asPositiveInt(input.resizeSnapLevels, DEFAULT_CONFIG.resizeSnapLevels)
   };
 }

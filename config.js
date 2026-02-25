@@ -31,5 +31,6 @@ window.DOCK_CONFIG = {
   allowTabStripStackZone: true,
   // Minimum panel height in px below which the tab strip stack zone is
   // suppressed to avoid conflicting with the center and directional zones.
-  tabStripStackZoneMinHeightPx: 120
+  // Should be above minBoxHeightPx but reachable via normal resizing.
+  tabStripStackZoneMinHeightPx: 80
 };
