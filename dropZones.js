@@ -691,12 +691,13 @@
       return hit ? hit.zone : null;
     }
 
-    function drawZonesForWorkspace(panelInfoMap, selectedZone, hoveredPanelId = null) {
+    function drawZonesForWorkspace(panelInfoMap, selectedZone, hoveredPanelId = null, options = {}) {
       const overlay = document.getElementById("workspaceOverlay");
       if (!overlay) return;
       overlay.innerHTML = "";
       workspaceEl.querySelectorAll(".panel.drag-hover").forEach((p) => p.classList.remove("drag-hover"));
-      const hasSelection = !!selectedZone;
+      const dimUnselected = options.dimUnselected !== false;
+      const hasSelection = !!selectedZone && dimUnselected;
       const overlayRect = overlay.getBoundingClientRect();
       const outcomeColorMap = new Map();
       let nextOutcomeColorIndex = 0;
