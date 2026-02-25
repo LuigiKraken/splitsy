@@ -1,6 +1,6 @@
 window.DOCK_CONFIG = {
   // Center stack-zone fraction (0.01..0.95).
-  centerFraction: 0.24,
+  centerFraction: 0.32,
   // Minimum directional band thickness in px.
   minBandPx: 12,
   // Max ancestor levels exposed as directional layers.
