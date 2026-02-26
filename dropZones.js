@@ -180,22 +180,8 @@ export function createDropZones(config, workspaceEl, { canAddSiblingToAxis, getR
       for (let layer = 1; layer <= reachable; layer++) {
         const isOuterEdge = layer === reachable;
         if (isOuterEdge) {
-          let edgeRect = getDisplayDirectionalEdgeRect(bounds, reachable, direction, startRatio);
+          const edgeRect = getDisplayDirectionalEdgeRect(bounds, reachable, direction, startRatio);
           if (!edgeRect || edgeRect.width <= 0 || edgeRect.height <= 0) continue;
-          const containerEl = panelEl.closest(".container[data-node-id]");
-          if (containerEl && info.parent) {
-            const containerBounds = containerEl.getBoundingClientRect();
-            const atEdge = 2;
-            if (direction === "BOTTOM" && panelBounds.bottom >= containerBounds.bottom - atEdge) {
-              edgeRect = { ...edgeRect, left: containerBounds.left, width: containerBounds.width };
-            } else if (direction === "TOP" && panelBounds.top <= containerBounds.top + atEdge) {
-              edgeRect = { ...edgeRect, left: containerBounds.left, width: containerBounds.width };
-            } else if (direction === "LEFT" && panelBounds.left <= containerBounds.left + atEdge) {
-              edgeRect = { ...edgeRect, top: containerBounds.top, height: containerBounds.height };
-            } else if (direction === "RIGHT" && panelBounds.right >= containerBounds.right - atEdge) {
-              edgeRect = { ...edgeRect, top: containerBounds.top, height: containerBounds.height };
-            }
-          }
           descriptors.push({
             key: `display-layer-${layer}-${direction}`, layer, direction,
             geometry: { kind: "rect", bounds: edgeRect },
