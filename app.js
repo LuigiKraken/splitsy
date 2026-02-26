@@ -157,14 +157,14 @@ applyRuntimeStyleConfig();
 
 // ── Dark mode ────────────────────────────────────────────────────────────────
 
-let isDarkMode = false;
+let isDarkMode = true;
 function applyDarkMode(dark) {
   isDarkMode = dark;
   document.documentElement.dataset.theme = dark ? "dark" : "";
   darkModeBtn.textContent = dark ? "Light Mode" : "Dark Mode";
   try { localStorage.setItem("splitzies-dark-mode", dark ? "1" : "0"); } catch (_) {}
 }
-try { applyDarkMode(localStorage.getItem("splitzies-dark-mode") === "1"); } catch (_) { applyDarkMode(false); }
+try { applyDarkMode(localStorage.getItem("splitzies-dark-mode") !== "0"); } catch (_) { applyDarkMode(true); }
 darkModeBtn.addEventListener("click", () => applyDarkMode(!isDarkMode));
 
 // ── Drag ghost ───────────────────────────────────────────────────────────────

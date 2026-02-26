@@ -10,7 +10,7 @@ const DEFAULTS = {
   previewIdleMs: 300,              // Idle time before drop preview appears
   previewMoveThresholdPx: 4,       // Pointer-move threshold for preview jitter filtering
   betweenSiblingHitSlopPx: 10,     // Extra hit slop around sibling boundaries
-  defaultPreviewMode: "hitbox",    // Initial drag visualization: hitbox | preview | combined
+  defaultPreviewMode: "preview",   // Initial drag visualization: hitbox | preview | combined
   persistLayout: true,             // Persist layout state in localStorage
   resizeSnapLevels: 8,             // Snapped resize levels
   dropTransitionMs: 130,           // Duration of drop layout transition
