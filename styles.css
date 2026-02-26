@@ -273,7 +273,7 @@ html, body {
   pointer-events: none;
   z-index: 65;
   opacity: 0;
-  transition: opacity 120ms linear;
+  transition: none;
 }
 .workspace-preview.active {
   opacity: 1;

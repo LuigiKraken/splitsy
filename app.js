@@ -308,11 +308,8 @@ function showDropPreview(zone, shouldAnimate = true) {
   previewLayer.classList.add("active");
   workspaceEl.classList.add("previewing");
   
-  // Only animate if this is a new zone or if explicitly requested
-  if (shouldAnimate) {
-    const sourceRects = capturePanelRects();
-    animatePreviewTransition(previewLayer, sourceRects);
-  }
+  // Preview ghosts should appear instantly without animation
+  // Only the actual layout changes should be animated
   
   lastShownPreviewZone = zone;
   lastShownPreviewTree = previewTree;
