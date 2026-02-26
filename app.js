@@ -162,9 +162,9 @@ function applyDarkMode(dark) {
   isDarkMode = dark;
   document.documentElement.dataset.theme = dark ? "dark" : "";
   darkModeBtn.textContent = dark ? "Light Mode" : "Dark Mode";
-  try { localStorage.setItem("splitsy-dark-mode", dark ? "1" : "0"); } catch (_) {}
+  try { localStorage.setItem("splitzies-dark-mode", dark ? "1" : "0"); } catch (_) {}
 }
-try { applyDarkMode(localStorage.getItem("splitsy-dark-mode") === "1"); } catch (_) { applyDarkMode(false); }
+try { applyDarkMode(localStorage.getItem("splitzies-dark-mode") === "1"); } catch (_) { applyDarkMode(false); }
 darkModeBtn.addEventListener("click", () => applyDarkMode(!isDarkMode));
 
 // ── Drag ghost ───────────────────────────────────────────────────────────────

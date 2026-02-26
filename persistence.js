@@ -2,7 +2,7 @@ import { findNodeById, getFirstPanel } from "./core/layoutModel.js";
 import { VIEW_MODES } from "./config.js";
 
 const SCHEMA_VERSION = 1;
-const STORAGE_KEY = `splitsy-layout-v${SCHEMA_VERSION}`;
+const STORAGE_KEY = `splitzies-layout-v${SCHEMA_VERSION}`;
 
 function isValidTab(tab) {
   return !!tab && typeof tab === "object" && typeof tab.id === "string" && Number.isFinite(tab.num) && tab.num > 0;

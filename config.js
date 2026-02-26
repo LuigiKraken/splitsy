@@ -33,8 +33,8 @@ function normalizeConfig(raw) {
   return c;
 }
 
-const override = (typeof window.SPLITSY_CONFIG === "object" && window.SPLITSY_CONFIG)
-  ? window.SPLITSY_CONFIG
+const override = (typeof window.SPLITZIES_CONFIG === "object" && window.SPLITZIES_CONFIG)
+  ? window.SPLITZIES_CONFIG
   : {};
 
 export const CONFIG = Object.freeze(normalizeConfig(override));

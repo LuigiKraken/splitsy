@@ -1,10 +1,10 @@
-# Splitsy
+# Splitzies
 
 **An interactive tech demo showing how any rectangle can be recursively segmented into further rectangles — and a portable blueprint for implementing this layout management pattern in any programming language.**
 
 Use the interface to get a feel for how it works. Read the code to see how it's implemented. Port the algorithm to your own stack.
 
-**[Live Demo](#)** — *deploy to GitHub Pages and update this link*
+**[Live Demo](https://luigikraken.github.io/splitzies/)**
 
 <!-- Add a screenshot or animated GIF here showing the demo in action -->
 
@@ -52,7 +52,7 @@ ES modules require an HTTP server (`file://` won't work). Any server works.
 ## Project Structure
 
 ```
-splitsy/
+splitzies/
 ├── core/                    ← Portable algorithm (framework-independent)
 │   ├── layoutModel.js       Tree data structure and operations
 │   ├── geometry.js          Zone shape math (polygons, clipping, hit testing)
@@ -96,11 +96,11 @@ Everything outside `core/` — drag handling, animations, persistence, overlay r
 
 ## Configuration
 
-All tunable parameters live in [`config.js`](./config.js). Override any default at runtime by setting `window.SPLITSY_CONFIG` before the app script loads:
+All tunable parameters live in [`config.js`](./config.js). Override any default at runtime by setting `window.SPLITZIES_CONFIG` before the app script loads:
 
 ```html
 <script>
-  window.SPLITSY_CONFIG = { centerFraction: 0.25, maxDepth: 4 };
+  window.SPLITZIES_CONFIG = { centerFraction: 0.25, maxDepth: 4 };
 </script>
 <script type="module" src="./app.js"></script>
 ```
