@@ -45,8 +45,6 @@ npx http-server -p 8080
 
 ES modules require an HTTP server (`file://` won't work). Any server works.
 
-**Deploying:** Since this is static HTML/CSS/JS, you can deploy anywhere — GitHub Pages, Netlify, Vercel, or any static host. A GitHub Actions workflow is included at [`.github/workflows/deploy.yml`](./.github/workflows/deploy.yml).
-
 ---
 
 ## Project Structure
