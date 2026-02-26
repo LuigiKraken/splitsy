@@ -328,6 +328,13 @@ function scheduleIdlePreview() {
     // Check if the resulting layout would actually change to avoid flickering
     const previewTree = buildDropPreviewTree(hover.zone);
     if (previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
+      // Still fade the overlay in combined mode if not already faded
+      if (previewMode === "combined") {
+        const overlay = document.getElementById("workspaceOverlay");
+        if (overlay && !overlay.classList.contains("faded")) {
+          overlay.classList.add("faded");
+        }
+      }
       return; // Don't rebuild preview if the resulting layout is the same
     }
     
@@ -381,10 +388,18 @@ function dispatchDragOver(x, y) {
     updateHoverFromPoint(x, y);
   } else if (previewMode === "combined") {
     drag.handlePreviewModeDragOver(x, y, () => {
-      clearDropPreviewLayer();
-      const overlay = document.getElementById("workspaceOverlay");
-      if (overlay) overlay.classList.remove("faded");
-      drag.hoverPreview = null;
+      // Check if we're still over the same zone that produces the same layout
+      const hover = resolveHoverAtPoint(buildPanelInfoMap(root), x, y);
+      const previewTree = hover && hover.zone ? buildDropPreviewTree(hover.zone) : null;
+      
+      // Only clear and rebuild if the layout would actually change
+      if (!previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
+        clearDropPreviewLayer();
+        const overlay = document.getElementById("workspaceOverlay");
+        if (overlay) overlay.classList.remove("faded");
+        drag.hoverPreview = null;
+      }
+      
       updateHoverFromPoint(x, y);
       statusEl.textContent = "Combined mode: hitboxes visible while moving. Pause briefly for a softer preview overlay.";
       scheduleIdlePreview();
