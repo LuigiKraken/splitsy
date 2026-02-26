@@ -18,6 +18,8 @@ let panelCounter = 1;
 let root = createPanelNode(createBoxTab());
 let activePanelId = root.id;
 let previewMode = CONFIG.defaultPreviewMode;
+let lastShownPreviewZone = null;
+let lastShownPreviewTree = null;
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
@@ -86,7 +88,7 @@ const { resolveHoverAtPoint, drawZonesForWorkspace } = createDropZones(CONFIG, w
   getRoot: () => root
 });
 
-const { render, renderPreviewTree, clearDropPreviewLayer, clearDragOverlay } = createRenderer(
+const renderer = createRenderer(
   workspaceEl, treeViewEl, {
     getRoot: () => root,
     getActivePanelId: () => activePanelId,
@@ -98,6 +100,15 @@ const { render, renderPreviewTree, clearDropPreviewLayer, clearDragOverlay } = c
     }
   }
 );
+
+// Wrap clearDropPreviewLayer to also reset the tracking variables
+const clearDropPreviewLayer = () => {
+  renderer.clearDropPreviewLayer();
+  lastShownPreviewZone = null;
+  lastShownPreviewTree = null;
+};
+
+const { render, renderPreviewTree, clearDragOverlay } = renderer;
 
 const { animateDropTransition, animatePreviewTransition } = createAnimations(workspaceEl, CONFIG);
 
@@ -255,12 +266,40 @@ function buildDropPreviewTree(zone) {
   return result ? result.root : null;
 }
 
-function showDropPreview(zone) {
+function serializeTreeStructure(node) {
+  if (!node) return null;
+  if (node.type === "panel") {
+    return `panel:${node.tabs.length}:${node.activeTabId}`;
+  }
+  if (node.type === "container") {
+    const childSigs = node.children.map(serializeTreeStructure).join(",");
+    const sizes = node.sizes.map(s => s.toFixed(3)).join(",");
+    return `container:${node.axis}:[${childSigs}]:[${sizes}]`;
+  }
+  return null;
+}
+
+function previewTreesAreEquivalent(tree1, tree2) {
+  if (!tree1 || !tree2) return tree1 === tree2;
+  return serializeTreeStructure(tree1) === serializeTreeStructure(tree2);
+}
+
+function showDropPreview(zone, shouldAnimate = true) {
   const previewLayer = document.getElementById("workspacePreview");
   if (!previewLayer) return;
-  const sourceRects = capturePanelRects();
   const previewTree = buildDropPreviewTree(zone);
   if (!previewTree) return;
+  
+  // Check if the preview tree structure is the same as what's already shown
+  // If so, keep the existing preview visible but skip the rebuild to avoid flicker
+  if (previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
+    // Ensure preview layer stays active (in case it was cleared)
+    previewLayer.classList.add("active");
+    workspaceEl.classList.add("previewing");
+    lastShownPreviewZone = zone;
+    return;
+  }
+  
   const treeDom = renderPreviewTree(previewTree);
   treeDom.style.width = "100%";
   treeDom.style.height = "100%";
@@ -268,7 +307,15 @@ function showDropPreview(zone) {
   previewLayer.classList.toggle("combined-tone", previewMode === "combined");
   previewLayer.classList.add("active");
   workspaceEl.classList.add("previewing");
-  animatePreviewTransition(previewLayer, sourceRects);
+  
+  // Only animate if this is a new zone or if explicitly requested
+  if (shouldAnimate) {
+    const sourceRects = capturePanelRects();
+    animatePreviewTransition(previewLayer, sourceRects);
+  }
+  
+  lastShownPreviewZone = zone;
+  lastShownPreviewTree = previewTree;
 }
 
 function scheduleIdlePreview() {
@@ -277,6 +324,13 @@ function scheduleIdlePreview() {
     const hover = resolveHoverAtPoint(buildPanelInfoMap(root), drag.lastDragPoint.x, drag.lastDragPoint.y);
     if (!hover || !hover.zone) return;
     if (hover.zone.type === "INVALID") { statusEl.textContent = `Preview blocked: ${hover.zone.reason}`; return; }
+    
+    // Check if the resulting layout would actually change to avoid flickering
+    const previewTree = buildDropPreviewTree(hover.zone);
+    if (previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
+      return; // Don't rebuild preview if the resulting layout is the same
+    }
+    
     drag.hoverPreview = { panelId: hover.panelId || null, depth: hover.info ? hover.info.depth : null, zone: hover.zone };
     if (previewMode === "combined") {
       const overlay = document.getElementById("workspaceOverlay");
@@ -284,20 +338,40 @@ function scheduleIdlePreview() {
     } else {
       clearDragOverlay();
     }
-    showDropPreview(hover.zone);
-    statusEl.textContent = `Preview: ${formatZoneSummary(hover.zone)}. Hold still to inspect, move to continue searching.`;
+    showDropPreview(hover.zone, true);
+    statusEl.textContent = `Preview: ${formatZoneSummary(hover.zone)}. Move to see other zones.`;
   }, CONFIG.previewIdleMs);
 }
 
 function showPreviewSearchState(x, y) {
-  clearDropPreviewLayer();
-  drag.hoverPreview = null;
-  clearDragOverlay();
   const hover = resolveHoverAtPoint(buildPanelInfoMap(root), x, y);
-  if (!hover) statusEl.textContent = "Move over a panel and pause briefly to see the drop preview.";
-  else if (!hover.zone) statusEl.textContent = "No valid drop zone here. Move and pause in another spot.";
-  else if (hover.zone.type === "INVALID") statusEl.textContent = `Preview blocked: ${hover.zone.reason}`;
-  else statusEl.textContent = "Pause briefly to show drop preview.";
+  
+  // Check if we should show preview immediately (when zone exists)
+  if (hover && hover.zone && hover.zone.type !== "INVALID") {
+    // Check if the resulting layout would actually change to avoid flickering
+    const previewTree = buildDropPreviewTree(hover.zone);
+    if (!previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
+      drag.hoverPreview = { panelId: hover.panelId || null, depth: hover.info ? hover.info.depth : null, zone: hover.zone };
+      clearDragOverlay();
+      showDropPreview(hover.zone, true);
+      statusEl.textContent = `Preview: ${formatZoneSummary(hover.zone)}. Move to see other zones.`;
+    }
+    return;
+  }
+  
+  // Handle invalid zones: clear preview to match the "blocked" message
+  if (hover && hover.zone && hover.zone.type === "INVALID") {
+    clearDropPreviewLayer();
+    clearDragOverlay();
+    drag.hoverPreview = null;
+    statusEl.textContent = `Preview blocked: ${hover.zone.reason}`;
+    return;
+  }
+  
+  // Keep the last valid preview visible when moving over gaps (no zone at all)
+  // Only update status text, don't clear the preview
+  if (!hover) statusEl.textContent = "Move over a panel to see the drop preview.";
+  else if (!hover.zone) statusEl.textContent = "No valid drop zone here. Move to another spot.";
 }
 
 // ── Drag-over dispatch (unified for all three modes) ─────────────────────────
