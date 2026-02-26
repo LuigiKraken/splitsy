@@ -247,7 +247,7 @@ function updateHoverFromPoint(x, y) {
     return;
   }
   drag.hoverPreview = { panelId: hover.panelId || null, depth: hover.info ? hover.info.depth : null, zone: hover.zone };
-  drawZonesForWorkspace(panelInfoMap, hover.zone, hover.panelId, { dimUnselected: previewMode !== "hitbox" });
+  drawZonesForWorkspace(panelInfoMap, hover.zone, hover.panelId, { dimUnselected: previewMode !== "hitbox" && previewMode !== "combined" });
   if (hover.zone) {
     statusEl.textContent = hover.zone.type === "INVALID"
       ? `Preview blocked: ${hover.zone.reason}`
@@ -356,7 +356,10 @@ function showPreviewSearchState(x, y) {
     const previewTree = buildDropPreviewTree(hover.zone);
     if (!previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
       drag.hoverPreview = { panelId: hover.panelId || null, depth: hover.info ? hover.info.depth : null, zone: hover.zone };
-      clearDragOverlay();
+      // In combined mode, don't clear hitboxes - just show preview on top
+      if (previewMode !== "combined") {
+        clearDragOverlay();
+      }
       showDropPreview(hover.zone, true);
       statusEl.textContent = `Preview: ${formatZoneSummary(hover.zone)}. Move to see other zones.`;
     }
@@ -366,7 +369,10 @@ function showPreviewSearchState(x, y) {
   // Handle invalid zones: clear preview to match the "blocked" message
   if (hover && hover.zone && hover.zone.type === "INVALID") {
     clearDropPreviewLayer();
-    clearDragOverlay();
+    // In combined mode, keep hitboxes visible
+    if (previewMode !== "combined") {
+      clearDragOverlay();
+    }
     drag.hoverPreview = null;
     statusEl.textContent = `Preview blocked: ${hover.zone.reason}`;
     return;
@@ -382,26 +388,17 @@ function showPreviewSearchState(x, y) {
 
 function dispatchDragOver(x, y) {
   if (previewMode === "hitbox") {
+    // Hitbox mode: just show hitboxes
     updateHoverFromPoint(x, y);
-  } else if (previewMode === "combined") {
+  } else if (previewMode === "preview") {
+    // Preview mode: show preview on idle
     drag.handlePreviewModeDragOver(x, y, () => {
-      // Check if we're still over the same zone that produces the same layout
-      const hover = resolveHoverAtPoint(buildPanelInfoMap(root), x, y);
-      const previewTree = hover && hover.zone ? buildDropPreviewTree(hover.zone) : null;
-      
-      // Only clear and rebuild if the layout would actually change
-      if (!previewTreesAreEquivalent(previewTree, lastShownPreviewTree)) {
-        clearDropPreviewLayer();
-        const overlay = document.getElementById("workspaceOverlay");
-        if (overlay) overlay.classList.remove("faded");
-        drag.hoverPreview = null;
-      }
-      
-      updateHoverFromPoint(x, y);
-      statusEl.textContent = "Combined mode: hitboxes visible while moving. Pause briefly for a softer preview overlay.";
+      showPreviewSearchState(x, y);
       scheduleIdlePreview();
     });
   } else {
+    // Combined mode: run BOTH hitbox and preview behaviors
+    updateHoverFromPoint(x, y);
     drag.handlePreviewModeDragOver(x, y, () => {
       showPreviewSearchState(x, y);
       scheduleIdlePreview();
