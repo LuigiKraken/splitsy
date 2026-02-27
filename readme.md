@@ -1,6 +1,6 @@
 # Splitzies
 
-**An interactive tech demo showing how any rectangle can be recursively segmented into further rectangles — and a portable blueprint for implementing this layout management pattern in any programming language.**
+**An interactive tech demo showing how any rectangle can be recursively segmented into further rectangles with always and only a singel drag and drop action.  Also a portable blueprint for implementing this layout management pattern in any programming language.**
 
 Use the interface to get a feel for how it works. Read the code to see how it's implemented. Port the algorithm to your own stack.
 
